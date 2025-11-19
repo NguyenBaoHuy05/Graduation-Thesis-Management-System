@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ApolloWrapper } from "@/lib/apollo-wrapper";
 import "./globals.css";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 // const geistSans = Geist({
 //   variable: "--font-geist-sans",
@@ -25,9 +26,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        <ApolloWrapper>{children}</ApolloWrapper>
-      </body>
+      <AuthProvider>
+        <body>
+          <ApolloWrapper>{children}</ApolloWrapper>
+        </body>
+      </AuthProvider>
     </html>
   );
 }
