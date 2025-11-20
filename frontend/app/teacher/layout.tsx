@@ -1,5 +1,5 @@
 import ProtectedRoute from "@/components/ProtectedRoute";
-export default function StudentLayout({
+export default function TeacherLayout({
   children,
 }: {
   children: React.ReactNode;
