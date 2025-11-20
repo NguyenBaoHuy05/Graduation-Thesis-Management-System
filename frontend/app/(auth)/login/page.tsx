@@ -24,7 +24,7 @@ const Login: React.FC = () => {
       return;
     }
 
-    const success = login(username, password);
+    const success = login(username, password, selectedRole);
     if (!success) {
       setError("Tên đăng nhập hoặc mật khẩu không đúng");
     } else {
@@ -33,7 +33,11 @@ const Login: React.FC = () => {
           ? "/student"
           : selectedRole === "Giảng viên"
           ? "/teacher"
-          : "/staff"
+          : selectedRole === "Trưởng khoa"
+          ? "/head"
+          : selectedRole === "Nhân viên"
+          ? "/secretary"
+          : "/login"
       );
     }
   };
@@ -126,7 +130,7 @@ const Login: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl"
+              className="w-full bg-linear-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl"
             >
               Đăng nhập
             </button>

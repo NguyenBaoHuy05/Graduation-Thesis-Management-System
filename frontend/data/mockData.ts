@@ -28,7 +28,17 @@ export interface Topic {
   createdAt: string;
 }
 
-export interface Staff {
+export interface Secretary {
+  id: string;
+  code: string;
+  name: string;
+  dateOfBirth: string;
+  gender: "Nam" | "Nữ";
+  email: string;
+  phone: string;
+}
+
+export interface Head {
   id: string;
   code: string;
   name: string;
@@ -117,7 +127,7 @@ export interface User {
   id: string;
   username: string;
   password: string;
-  role: "student" | "teacher" | "staff" | "admin";
+  role: "student" | "teacher" | "secretary" | "head";
   profileId: string;
 }
 
@@ -170,6 +180,44 @@ export const mockUsers: User[] = [
     password: "123456",
     role: "teacher",
     profileId: "t3",
+  },
+  {
+    id: "u8",
+    username: "HD001",
+    password: "123456",
+    role: "head",
+    profileId: "h1",
+  },
+  {
+    id: "u9",
+    username: "SC001",
+    password: "123456",
+    role: "secretary",
+    profileId: "s1",
+  },
+];
+
+export const mockSecretaries: Secretary[] = [
+  {
+    id: "s1",
+    code: "SV001",
+    name: "Nguyễn Thị Hương",
+    dateOfBirth: "1988-03-22",
+    gender: "Nữ",
+    email: "huong.nt@university.edu.vn",
+    phone: "0987654321",
+  },
+];
+
+export const mockHeads: Head[] = [
+  {
+    id: "h1",
+    code: "HD001",
+    name: "Trần Văn Quang",
+    dateOfBirth: "1970-11-05",
+    gender: "Nam",
+    email: "quang.tv@university.edu.vn",
+    phone: "0976543210",
   },
 ];
 

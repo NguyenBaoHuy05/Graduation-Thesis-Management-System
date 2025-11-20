@@ -11,6 +11,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import TopicProposal from "./TopicProposal";
 import StudentManagement from "./StudentManagement";
 import ProgressEvaluation from "./ProgressEvaluation";
@@ -52,8 +53,13 @@ const TeacherDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
-              <div className="bg-gradient-to-br from-green-600 to-green-700 p-2 rounded-lg">
-                <Lightbulb size={24} className="text-white" />
+              <div className=" p-2 rounded-lg">
+                <Image
+                  src="/LOGO_FIT_2.png"
+                  alt="Logo"
+                  width={40}
+                  height={40}
+                />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
@@ -80,7 +86,7 @@ const TeacherDashboard: React.FC = () => {
               </div>
               <button
                 onClick={logout}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-500 rounded-lg transition-colors"
               >
                 <LogOut size={18} />
                 <span className="text-sm font-medium">Đăng xuất</span>
@@ -114,7 +120,7 @@ const TeacherDashboard: React.FC = () => {
             </div>
             <button
               onClick={logout}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-500 rounded-lg transition-colors"
             >
               <LogOut size={18} />
               <span className="text-sm font-medium">Đăng xuất</span>
@@ -125,7 +131,7 @@ const TeacherDashboard: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-6">
-          <aside className="lg:w-64 flex-shrink-0">
+          <aside className="lg:w-64 shrink-0">
             <nav className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               {tabs.map((tab) => {
                 const Icon = tab.icon;

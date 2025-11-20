@@ -1,7 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import { useAuth } from "../../contexts/AuthContext";
-import { Student } from "../../data/mockData";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { Student } from "@/data/mockData";
 import {
   LogOut,
   BookOpen,
@@ -12,10 +13,11 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import ThesisRegistration from "./ThesisRegistration";
 import OutlineSubmission from "./OutlineSubmission";
 import ThesisProgress from "./ThesisProgress";
-// import ComplaintForm from "./ComplaintForm";
+import ComplaintForm from "./ComplaintForm";
 import NotificationList from "./NotificationList";
 
 type TabType =
@@ -26,6 +28,7 @@ type TabType =
   | "notification";
 
 const StudentDashboard: React.FC = () => {
+  const router = useRouter();
   const { profile, logout } = useAuth();
   const student = profile as Student;
   const [activeTab, setActiveTab] = useState<TabType>("registration");
@@ -51,8 +54,8 @@ const StudentDashboard: React.FC = () => {
         return <OutlineSubmission />;
       case "progress":
         return <ThesisProgress />;
-      //   case "complaint":
-      //     return <ComplaintForm />;
+      case "complaint":
+        return <ComplaintForm />;
       case "notification":
         return <NotificationList />;
       default:
@@ -66,8 +69,13 @@ const StudentDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
-              <div className="bg-linear-to-br from-blue-600 to-blue-700 p-2 rounded-lg">
-                <BookOpen size={24} className="text-white" />
+              <div className=" p-2 rounded-lg">
+                <Image
+                  src="/LOGO_FIT_2.png"
+                  alt="Logo"
+                  width={60}
+                  height={60}
+                />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
@@ -87,8 +95,11 @@ const StudentDashboard: React.FC = () => {
                 </p>
               </div>
               <button
-                onClick={logout}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                onClick={() => {
+                  logout();
+                  router.replace("/login");
+                }}
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-500 cursor-pointer rounded-lg transition-colors"
               >
                 <LogOut size={18} />
                 <span className="text-sm font-medium">Đăng xuất</span>
@@ -115,8 +126,11 @@ const StudentDashboard: React.FC = () => {
               </p>
             </div>
             <button
-              onClick={logout}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              onClick={() => {
+                logout();
+                router.replace("/login");
+              }}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-500 rounded-lg transition-colors"
             >
               <LogOut size={18} />
               <span className="text-sm font-medium">Đăng xuất</span>
