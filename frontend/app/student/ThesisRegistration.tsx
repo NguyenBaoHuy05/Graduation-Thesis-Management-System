@@ -163,7 +163,7 @@ const ThesisRegistration: React.FC = () => {
 
         <div className="space-y-4">
           {approvedTopics.map((topic) => {
-            const teacher = getTeacher(topic.teacherId);
+            const teacher = topic.teacherId ? getTeacher(topic.teacherId) : undefined;
             const isFull = topic.currentStudents >= topic.maxStudents;
             const isTeacherFull =
               teacher && teacher.currentTheses >= teacher.maxTheses;
@@ -265,7 +265,9 @@ const ThesisRegistration: React.FC = () => {
                   Giáo viên hướng dẫn
                 </p>
                 <p className="text-base font-semibold text-gray-900">
-                  {getTeacher(selectedTopic.teacherId)?.name}
+                  {selectedTopic.teacherId
+                    ? getTeacher(selectedTopic.teacherId)?.name
+                    : "N/A"}
                 </p>
               </div>
 

@@ -12,6 +12,7 @@ import {
   Bell,
   Menu,
   X,
+  User,
 } from "lucide-react";
 import Image from "next/image";
 import ThesisRegistration from "./ThesisRegistration";
@@ -44,12 +45,11 @@ const StudentDashboard: React.FC = () => {
     { id: "progress" as TabType, name: "Theo dõi tiến độ", icon: TrendingUp },
     { id: "complaint" as TabType, name: "Khiếu nại", icon: Shield },
     { id: "notification" as TabType, name: "Thông báo", icon: Bell },
+
   ];
 
   const renderContent = () => {
     switch (activeTab) {
-      case "registration":
-        return <ThesisRegistration />;
       case "outline":
         return <OutlineSubmission />;
       case "progress":

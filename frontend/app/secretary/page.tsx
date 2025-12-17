@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, FileText, Users, Menu, X } from "lucide-react";
 import TopicManagement from "./TopicManagement";
 import CommitteeProposal from "./CommitteeProposal";
@@ -80,24 +80,36 @@ export default function DeanSecretaryDashboard() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-          {tabs.map(({ id, name, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
-                activeTab === id
-                  ? "bg-purple-600 text-white shadow-lg"
-                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {name}
-            </button>
-          ))}
-        </div>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <aside className="lg:w-64 shrink-0">
+            <nav className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 transition-all border-l-4 ${
+                      activeTab === tab.id
+                        ? "bg-blue-50 border-blue-600 text-blue-700"
+                        : "border-transparent text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Icon size={20} />
+                    <span className="font-medium text-sm">{tab.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
 
-        <div className="bg-white rounded-lg shadow-lg">{renderContent()}</div>
+          <main className="bg-white rounded flex-1 min-w-0">
+            {renderContent()}
+          </main>
+        </div>
       </div>
     </div>
   );

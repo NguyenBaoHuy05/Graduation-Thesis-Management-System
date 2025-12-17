@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { User } from './user.entity';
+import { rowToUser, rowsToUsers, toInsert } from './user.transformer';
 import { Database } from '../types/database.types';
 
 type UserInsert = Database['public']['Tables']['users']['Insert'];
@@ -17,7 +18,8 @@ export class UsersService {
       .select('*');
 
     if (error) throw error;
-    return data as User[];
+    // Data from Supabase is typed as any/UserRow; use transformer to map to User
+    return rowsToUsers(data as any);
   }
 
   async findOne(id: string): Promise<User> {
@@ -29,7 +31,8 @@ export class UsersService {
       .single();
 
     if (error) throw error;
-    return data as User;
+    if (!data) return null as any;
+    return rowToUser(data as any);
   }
 
   async create(email: string, name: string): Promise<User> {
@@ -43,7 +46,8 @@ export class UsersService {
       .single();
 
     if (error) throw error;
-    return data as User;
+    if (!data) return null as any;
+    return rowToUser(data as any);
   }
 
   async update(id: string, name: string): Promise<User> {
@@ -56,7 +60,8 @@ export class UsersService {
       .single();
 
     if (error) throw error;
-    return data as User;
+    if (!data) return null as any;
+    return rowToUser(data as any);
   }
 
   async delete(id: string): Promise<void> {

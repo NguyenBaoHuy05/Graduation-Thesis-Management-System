@@ -59,7 +59,10 @@ const ThesisProgress: React.FC = () => {
 
   const canSubmitThesis = myRegistration.status === "in_progress";
   const isSubmitted =
-    myRegistration.status === "submitted" || myRegistration.status === "graded";
+    myRegistration.status === "submitted" ||
+    myRegistration.status === "defense_ready" ||
+    myRegistration.status === "defended" ||
+    myRegistration.status === "completed";
 
   return (
     <div className="space-y-6">
@@ -315,7 +318,7 @@ const ThesisProgress: React.FC = () => {
                     </a>
                   </p>
                 )}
-                {myRegistration.status === "graded" && myRegistration.score && (
+                {myRegistration.status === "completed" && myRegistration.score && (
                   <p className="text-lg font-bold text-green-600 mt-3">
                     Điểm: {myRegistration.score}/10
                   </p>
