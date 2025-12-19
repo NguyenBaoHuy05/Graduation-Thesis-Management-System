@@ -4,6 +4,7 @@ import {
   mockRegistrations,
   mockStudents,
   mockTopics,
+  mockPlagiarismChecks,
 } from "../../data/mockData";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -13,6 +14,7 @@ import {
   BookOpen,
   FileText,
   CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 
 const StudentManagement: React.FC = () => {
@@ -59,6 +61,55 @@ const StudentManagement: React.FC = () => {
     }
   };
 
+  // State for Confirmation Modal
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [selectedReg, setSelectedReg] = React.useState<any>(null);
+  const [advisorScore, setAdvisorScore] = React.useState<number | "">("");
+  const [confirmStep, setConfirmStep] = React.useState<"check" | "score">(
+    "check"
+  );
+
+  // Mock data for Plagiarism (In a real app, this would come from props or API)
+  const getPlagiarismResult = (studentId: string) => {
+    const check = mockPlagiarismChecks.find((p) => p.studentId === studentId);
+    if (!check) return { status: "pending", percentage: 0 };
+    return { status: check.status, percentage: check.similarityPercentage };
+  };
+
+  const handleOpenConfirm = (reg: any) => {
+    setSelectedReg(reg);
+    setAdvisorScore(reg.score || "");
+    setConfirmStep("check");
+    setIsModalOpen(true);
+  };
+
+  const handleConfirmDefense = () => {
+    if (
+      advisorScore === "" ||
+      Number(advisorScore) < 0 ||
+      Number(advisorScore) > 10
+    ) {
+      alert("Vui lòng nhập điểm hợp lệ (0-10).");
+      return;
+    }
+
+    if (confirm("Xác nhận sinh viên này đủ điều kiện bảo vệ?")) {
+      // Update local state (mock)
+      alert(
+        `Đã xác nhận sinh viên ${selectedReg.student?.name} đủ điều kiện bảo vệ! Điểm: ${advisorScore}`
+      );
+      setIsModalOpen(false);
+    }
+  };
+
+  const handleRejectDefense = () => {
+    const reason = prompt("Nhập lý do từ chối (sinh viên sẽ phải sửa lại):");
+    if (reason) {
+      alert(`Đã gửi yêu cầu chỉnh sửa cho sinh viên. Lý do: ${reason}`);
+      setIsModalOpen(false);
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <div className="flex items-center space-x-3 mb-6">
@@ -84,6 +135,7 @@ const StudentManagement: React.FC = () => {
         <div className="space-y-4">
           {myStudents.map((item) => {
             const statusInfo = getStatusInfo(item.status);
+            const canConfirm = item.status === "submitted";
 
             return (
               <div
@@ -121,11 +173,21 @@ const StudentManagement: React.FC = () => {
                     </div>
                   </div>
 
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}
-                  >
-                    {statusInfo.text}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}
+                    >
+                      {statusInfo.text}
+                    </span>
+                    {canConfirm && (
+                      <button
+                        onClick={() => handleOpenConfirm(item)}
+                        className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
+                      >
+                        Xác nhận bảo vệ
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="bg-gray-50 rounded-lg p-4 mb-3">
@@ -220,7 +282,9 @@ const StudentManagement: React.FC = () => {
                   <div className="mt-3 pt-3 border-t border-gray-200">
                     <div className="flex items-center space-x-2">
                       <CheckCircle size={18} className="text-green-600" />
-                      <span className="text-sm text-gray-700">Điểm:</span>
+                      <span className="text-sm text-gray-700">
+                        Điểm hướng dẫn:
+                      </span>
                       <span className="text-lg font-bold text-green-600">
                         {item.score}/10
                       </span>
@@ -230,6 +294,112 @@ const StudentManagement: React.FC = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {isModalOpen && selectedReg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-900">
+                Xác nhận bảo vệ
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 hover:bg-gray-100 rounded-full text-gray-500 transition"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-900 mb-2">
+                  {selectedReg.student?.name}
+                </h4>
+                <p className="text-sm text-gray-500 mb-4">
+                  {selectedReg.topic?.title}
+                </p>
+
+                <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Nộp báo cáo:</span>
+                    <span className="flex items-center text-green-600 font-medium">
+                      <CheckCircle size={14} className="mr-1" /> Đã nộp
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Kết quả đạo văn:</span>
+                    {/* Mock check logic */}
+                    {getPlagiarismResult(selectedReg.studentId).percentage <
+                    20 ? (
+                      <span className="flex items-center text-green-600 font-medium">
+                        <CheckCircle size={14} className="mr-1" /> Đạt (
+                        {getPlagiarismResult(selectedReg.studentId).percentage}
+                        %)
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-red-600 font-medium">
+                        <AlertTriangle size={14} className="mr-1" /> Cảnh báo (
+                        {getPlagiarismResult(selectedReg.studentId).percentage}
+                        %)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Điểm quá trình / hướng dẫn (0-10)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={advisorScore}
+                  onChange={(e) =>
+                    setAdvisorScore(
+                      e.target.value === "" ? "" : Number(e.target.value)
+                    )
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  placeholder="Nhập điểm..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleRejectDefense}
+                  className="flex-1 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 font-medium transition"
+                >
+                  Không đồng ý
+                </button>
+                <button
+                  onClick={handleConfirmDefense}
+                  disabled={advisorScore === ""}
+                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md"
+                >
+                  Xác nhận
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,10 +1,11 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   mockTopics,
   mockRegistrations,
   mockTeachers,
   Topic,
+  ThesisRegistration as Registration,
 } from "../../data/mockData";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -12,35 +13,93 @@ import {
   User,
   Users,
   CheckCircle,
-  XCircle,
   Info,
+  Search,
+  Filter,
+  Eye,
 } from "lucide-react";
 
 const ThesisRegistration: React.FC = () => {
   const { user } = useAuth();
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  
+  // State for search and filter
+  const [searchTerm, setSearchTerm] = useState("");
+  const [specializationFilter, setSpecializationFilter] = useState("");
+  
+  // State for modals
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null); // For Confirmation
+  const [viewingTopic, setViewingTopic] = useState<Topic | null>(null); // For Details
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
+  // Local state for registration to simulate immediate update
+  const [myRegistration, setMyRegistration] = useState<Registration | undefined>(undefined);
+
+  useEffect(() => {
+    // Initialize registration from mock data
+    const reg = mockRegistrations.find((r) => r.studentId === user?.profileId);
+    setMyRegistration(reg);
+  }, [user]);
 
   const approvedTopics = mockTopics.filter((t) => t.status === "approved");
-  const myRegistration = mockRegistrations.find(
-    (r) => r.studentId === user?.profileId
+
+  // Filtering Logic
+  const filteredTopics = approvedTopics.filter((topic) => {
+    const teacher = mockTeachers.find((t) => t.id === topic.teacherId);
+    const matchesSearch =
+      topic.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      topic.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (teacher && teacher.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesSpecialization = specializationFilter
+      ? topic.specialization === specializationFilter
+      : true;
+
+    return matchesSearch && matchesSpecialization;
+  });
+
+  const uniqueSpecializations = Array.from(
+    new Set(approvedTopics.map((t) => t.specialization))
   );
 
   const getTeacher = (teacherId: string) => {
     return mockTeachers.find((t) => t.id === teacherId);
   };
 
-  const handleRegister = (topic: Topic) => {
+  const handleRegisterClick = (topic: Topic) => {
     setSelectedTopic(topic);
-    setShowModal(true);
+    setShowConfirmModal(true);
+  };
+
+  const handleViewDetails = (topic: Topic) => {
+    setViewingTopic(topic);
+    setShowDetailModal(true);
   };
 
   const confirmRegister = () => {
-    alert("Đăng ký thành công! (Demo mode - dữ liệu không được lưu thực tế)");
-    setShowModal(false);
+    if (!selectedTopic || !user) return;
+    
+    
+    // Check has been removed.
+    // Logic moved to Topic Proposal Validation (Max Group Size)
+
+    // Simulate API call and state update
+    const newRegistration: Registration = {
+        id: `reg${Date.now()}`,
+        studentId: user.profileId,
+        topicId: selectedTopic.id,
+        teacherId: selectedTopic.teacherId,
+        status: "registered",
+        registeredAt: new Date().toISOString()
+    };
+
+    setMyRegistration(newRegistration);
+    alert("Đăng ký thành công!");
+    setShowConfirmModal(false);
     setSelectedTopic(null);
   };
 
+  // Render "Registered View" if student has a registration
   if (myRegistration) {
     const myTopic = mockTopics.find((t) => t.id === myRegistration.topicId);
     const myTeacher = getTeacher(myRegistration.teacherId);
@@ -134,9 +193,10 @@ const ThesisRegistration: React.FC = () => {
     );
   }
 
+  // Render List View
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-h-[calc(100vh-10rem)]">
         <div className="flex items-center space-x-3 mb-6">
           <div className="bg-blue-100 p-2 rounded-lg">
             <BookOpen size={24} className="text-blue-600" />
@@ -144,9 +204,36 @@ const ThesisRegistration: React.FC = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Đăng ký đề tài</h2>
             <p className="text-sm text-gray-500">
-              Chọn đề tài khóa luận tốt nghiệp
+              Tra cứu và đăng ký đề tài khóa luận
             </p>
           </div>
+        </div>
+
+        {/* Search & Filter Bar */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex-1 relative">
+                <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                <input 
+                    type="text" 
+                    placeholder="Tìm theo tên đề tài, mã số hoặc GVHD..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <div className="w-full md:w-1/4 relative">
+                 <Filter className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                 <select
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white"
+                    value={specializationFilter}
+                    onChange={(e) => setSpecializationFilter(e.target.value)}
+                 >
+                    <option value="">Tất cả chuyên ngành</option>
+                    {uniqueSpecializations.map(spec => (
+                        <option key={spec} value={spec}>{spec}</option>
+                    ))}
+                 </select>
+            </div>
         </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start space-x-3">
@@ -156,14 +243,19 @@ const ThesisRegistration: React.FC = () => {
             <ul className="list-disc list-inside space-y-1 text-blue-700">
               <li>Mỗi sinh viên chỉ được đăng ký 1 đề tài</li>
               <li>Kiểm tra số lượng còn nhận trước khi đăng ký</li>
-              <li>Đọc kỹ yêu cầu và tài liệu tham khảo</li>
+              <li>Sử dụng chức năng tìm kiếm để lọc đề tài phù hợp</li>
             </ul>
           </div>
         </div>
 
         <div className="space-y-4">
-          {approvedTopics.map((topic) => {
-            const teacher = getTeacher(topic.teacherId);
+          {filteredTopics.length === 0 ? (
+             <div className="text-center py-12 text-gray-500">
+                 Không tìm thấy đề tài nào phù hợp.
+             </div>
+          ) : (
+          filteredTopics.map((topic) => {
+            const teacher = topic.teacherId ? getTeacher(topic.teacherId) : undefined;
             const isFull = topic.currentStudents >= topic.maxStudents;
             const isTeacherFull =
               teacher && teacher.currentTheses >= teacher.maxTheses;
@@ -190,14 +282,14 @@ const ThesisRegistration: React.FC = () => {
                     <h3 className="text-lg font-bold text-gray-900 mb-2">
                       {topic.title}
                     </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed mb-3">
+                    <p className="text-sm text-gray-600 leading-relaxed mb-3 line-clamp-2">
                       {topic.description}
                     </p>
 
                     <div className="flex items-center space-x-4 text-sm mb-3">
                       <div className="flex items-center space-x-2">
                         <User size={16} className="text-gray-400" />
-                        <span className="text-gray-700">{teacher?.name}</span>
+                        <span className="text-gray-700 font-medium">{teacher?.name}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Users size={16} className="text-gray-400" />
@@ -210,16 +302,15 @@ const ThesisRegistration: React.FC = () => {
                         </span>
                       </div>
                     </div>
-
-                    <div className="bg-gray-50 rounded-lg p-3 text-xs">
-                      <p className="font-semibold text-gray-700 mb-1">
-                        Yêu cầu:
-                      </p>
-                      <p className="text-gray-600">{topic.requirements}</p>
-                    </div>
                   </div>
 
-                  <div className="ml-4">
+                  <div className="ml-4 flex flex-col space-y-2">
+                    <button
+                        onClick={() => handleViewDetails(topic)}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                        <Eye size={16} /> Chi tiết
+                    </button>
                     {isFull || isTeacherFull ? (
                       <button
                         disabled
@@ -229,7 +320,7 @@ const ThesisRegistration: React.FC = () => {
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleRegister(topic)}
+                        onClick={() => handleRegisterClick(topic)}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                       >
                         Đăng ký
@@ -239,13 +330,15 @@ const ThesisRegistration: React.FC = () => {
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </div>
       </div>
 
-      {showModal && selectedTopic && (
+      {/* Confirmation Modal */}
+      {showConfirmModal && selectedTopic && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-xl font-bold text-gray-900">
                 Xác nhận đăng ký
@@ -265,7 +358,9 @@ const ThesisRegistration: React.FC = () => {
                   Giáo viên hướng dẫn
                 </p>
                 <p className="text-base font-semibold text-gray-900">
-                  {getTeacher(selectedTopic.teacherId)?.name}
+                  {selectedTopic.teacherId
+                    ? getTeacher(selectedTopic.teacherId)?.name
+                    : "N/A"}
                 </p>
               </div>
 
@@ -280,7 +375,7 @@ const ThesisRegistration: React.FC = () => {
             <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
               <button
                 onClick={() => {
-                  setShowModal(false);
+                  setShowConfirmModal(false);
                   setSelectedTopic(null);
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
@@ -295,6 +390,73 @@ const ThesisRegistration: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {showDetailModal && viewingTopic && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+             <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-gray-900">Chi tiết đề tài</h3>
+                    <button onClick={() => setShowDetailModal(false)} className="text-gray-500 hover:text-gray-700">
+                        <span className="text-2xl">&times;</span>
+                    </button>
+                </div>
+                <div className="p-6 space-y-6">
+                    <div>
+                        <h4 className="text-lg font-bold text-blue-900 mb-2">{viewingTopic.title}</h4>
+                        <div className="flex gap-2">
+                             <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
+                                {viewingTopic.code}
+                            </span>
+                            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                                {viewingTopic.specialization}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h5 className="font-bold text-gray-900 mb-1">Mô tả</h5>
+                        <p className="text-gray-700 text-sm leading-relaxed">{viewingTopic.description}</p>
+                    </div>
+
+                    <div>
+                        <h5 className="font-bold text-gray-900 mb-1">Yêu cầu sinh viên</h5>
+                        <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{viewingTopic.requirements}</p>
+                    </div>
+
+                    {viewingTopic.references && viewingTopic.references.length > 0 && (
+                        <div>
+                             <h5 className="font-bold text-gray-900 mb-1">Tài liệu tham khảo</h5>
+                             <ul className="list-disc list-inside text-sm text-gray-700">
+                                {viewingTopic.references.map((ref, idx) => (
+                                    <li key={idx}>{ref}</li>
+                                ))}
+                             </ul>
+                        </div>
+                    )}
+                    
+                    <div className="flex gap-4 pt-4 border-t">
+                        <div className="flex-1">
+                             <p className="text-xs text-gray-500">Giảng viên hướng dẫn</p>
+                             <p className="font-medium text-gray-900">{getTeacher(viewingTopic.teacherId)?.name}</p>
+                        </div>
+                         <div className="flex-1">
+                             <p className="text-xs text-gray-500">Số lượng</p>
+                             <p className="font-medium text-gray-900">{viewingTopic.currentStudents}/{viewingTopic.maxStudents}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="p-6 border-t border-gray-200 flex justify-end">
+                     <button
+                        onClick={() => setShowDetailModal(false)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        Đóng
+                      </button>
+                </div>
+             </div>
         </div>
       )}
     </>

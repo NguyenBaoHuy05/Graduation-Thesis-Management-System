@@ -1,37 +1,86 @@
 "use client";
 import { useState } from "react";
-import { useAuth } from "../../contexts/AuthContext";
-import { LogOut, FileText, Users, Menu, X } from "lucide-react";
-import TopicManagement from "./TopicManagement";
-import CommitteeProposal from "./CommitteeProposal";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  LogOut,
+  Users,
+  Menu,
+  X,
+  Calendar,
+  GraduationCap,
+  UserSquare,
+  ClipboardList,
+  Bell,
+} from "lucide-react";
+import ThesisPeriodManagement from "./ThesisPeriodManagement";
+// Removed CommitteeProposal import as feature is merged to Head
+import DefenseScheduling from "./DefenseScheduling";
+import TeacherManagement from "./TeacherManagement";
+import StudentManagement from "./StudentManagement";
+import FormManagement from "./FormManagement";
+import NotificationManagement from "./NotificationManagement";
 import Image from "next/image";
 
-type TabType = "topics" | "committee";
+type TabType =
+  | "periods"
+  | "defense_scheduling"
+  | "teachers"
+  | "students"
+  | "forms"
+  | "notifications";
 
 export default function DeanSecretaryDashboard() {
   const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>("topics");
+  const [activeTab, setActiveTab] = useState<TabType>("periods");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const tabs = [
     {
-      id: "topics" as TabType,
-      name: "Quản lý danh sách đề tài",
-      icon: FileText,
+      id: "periods" as TabType,
+      name: "Quản lý kỳ khóa luận",
+      icon: Calendar,
     },
     {
-      id: "committee" as TabType,
-      name: "Đề xuất hội đồng bảo vệ",
+      id: "defense_scheduling" as TabType,
+      name: "Lên lịch bảo vệ",
       icon: Users,
+    },
+    {
+      id: "teachers" as TabType,
+      name: "Quản lý giảng viên",
+      icon: GraduationCap,
+    },
+    {
+      id: "students" as TabType,
+      name: "Quản lý sinh viên",
+      icon: UserSquare,
+    },
+    {
+      id: "forms" as TabType,
+      name: "Quản lý biểu mẫu",
+      icon: ClipboardList,
+    },
+    {
+      id: "notifications" as TabType,
+      name: "Quản lý thông báo",
+      icon: Bell,
     },
   ];
 
   const renderContent = () => {
     switch (activeTab) {
-      case "topics":
-        return <TopicManagement />;
-      case "committee":
-        return <CommitteeProposal />;
+      case "periods":
+        return <ThesisPeriodManagement />;
+      case "defense_scheduling":
+        return <DefenseScheduling />;
+      case "teachers":
+        return <TeacherManagement />;
+      case "students":
+        return <StudentManagement />;
+      case "forms":
+        return <FormManagement />;
+      case "notifications":
+        return <NotificationManagement />;
       default:
         return null;
     }
@@ -80,24 +129,36 @@ export default function DeanSecretaryDashboard() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-          {tabs.map(({ id, name, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
-                activeTab === id
-                  ? "bg-purple-600 text-white shadow-lg"
-                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {name}
-            </button>
-          ))}
-        </div>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <aside className="lg:w-64 shrink-0">
+            <nav className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 transition-all border-l-4 ${
+                      activeTab === tab.id
+                        ? "bg-blue-50 border-blue-600 text-blue-700"
+                        : "border-transparent text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Icon size={20} />
+                    <span className="font-medium text-sm">{tab.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
 
-        <div className="bg-white rounded-lg shadow-lg">{renderContent()}</div>
+          <main className="bg-white rounded flex-1 min-w-0">
+            {renderContent()}
+          </main>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { mockTopics } from "../../data/mockData";
+import { mockTopics, Topic, mockThesisPeriods } from "../../data/mockData";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   Lightbulb,
@@ -10,11 +10,21 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  UserPlus,
 } from "lucide-react";
+import InviteStudentModal from "./InviteStudentModal";
 
 const TopicProposal: React.FC = () => {
   const { user } = useAuth();
   const [showModal, setShowModal] = useState(false);
+  // Invite Modal State
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [selectedTopicForInvite, setSelectedTopicForInvite] = useState<{id: string, title: string} | null>(null);
+
+  const [myTopics, setMyTopics] = useState(
+    mockTopics.filter((t) => t.teacherId === user?.profileId)
+  );
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -24,11 +34,35 @@ const TopicProposal: React.FC = () => {
     maxStudents: 2,
   });
 
-  const myTopics = mockTopics.filter((t) => t.teacherId === user?.profileId);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Đề xuất đề tài thành công! (Demo mode)");
+    
+    // Validation: Max Students must not exceed Period Max Group Size
+    const activePeriod = mockThesisPeriods.find(p => p.status === "active");
+    if (activePeriod && activePeriod.maxGroupSize && formData.maxStudents > activePeriod.maxGroupSize) {
+        alert(`Số lượng sinh viên tối đa không được vượt quá quy định của kỳ (${activePeriod.maxGroupSize} sinh viên/nhóm).`);
+        return;
+    }
+
+    // Create new mock topic
+    const newTopic: Topic = {
+        id: `tp${Date.now()}`,
+        code: `DT${Date.now().toString().slice(-3)}`,
+        title: formData.title,
+        description: formData.description,
+        requirements: formData.requirements,
+        references: formData.references.split("\n"),
+        teacherId: user?.profileId || "",
+        specialization: formData.specialization,
+        status: "pending",
+        maxStudents: formData.maxStudents,
+        currentStudents: 0,
+        createdAt: new Date().toISOString().split("T")[0],
+        periodId: activePeriod?.id || "per1" // Link to active period
+    };
+
+    setMyTopics([newTopic, ...myTopics]);
+    alert("Đề xuất đề tài thành công!");
     setShowModal(false);
     setFormData({
       title: "",
@@ -39,6 +73,11 @@ const TopicProposal: React.FC = () => {
       maxStudents: 2,
     });
   };
+
+  const openInviteModal = (topic: Topic) => {
+    setSelectedTopicForInvite({ id: topic.id, title: topic.title });
+    setInviteModalOpen(true);
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -153,11 +192,21 @@ const TopicProposal: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="ml-4 flex space-x-2">
-                    <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                  <div className="ml-4 flex flex-col space-y-2">
+                     {/* Invite Button */}
+                    {topic.status === "approved" && topic.currentStudents < topic.maxStudents && (
+                        <button 
+                            onClick={() => openInviteModal(topic)}
+                            title="Mời sinh viên"
+                            className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex items-center justify-center border border-purple-200"
+                        >
+                            <UserPlus size={18} />
+                        </button>
+                    )}
+                    <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-center border border-blue-200">
                       <Edit size={18} />
                     </button>
-                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center border border-red-200">
                       <Trash2 size={18} />
                     </button>
                   </div>
@@ -214,6 +263,7 @@ const TopicProposal: React.FC = () => {
                   <option value="An ninh mạng">An ninh mạng</option>
                   <option value="Khoa học dữ liệu">Khoa học dữ liệu</option>
                   <option value="Hệ thống thông tin">Hệ thống thông tin</option>
+                   <option value="Công nghệ phần mềm">Công nghệ phần mềm</option>
                 </select>
               </div>
 
@@ -266,12 +316,12 @@ const TopicProposal: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số lượng sinh viên tối đa
+                  Số lượng sinh viên tối đa (Tối đa: {mockThesisPeriods.find(p => p.status === "active")?.maxGroupSize || 5})
                 </label>
                 <input
                   type="number"
                   min="1"
-                  max="5"
+                  max={mockThesisPeriods.find(p => p.status === "active")?.maxGroupSize || 5}
                   value={formData.maxStudents}
                   onChange={(e) =>
                     setFormData({
@@ -302,6 +352,20 @@ const TopicProposal: React.FC = () => {
           </div>
         </div>
       )}
+
+       {/* Invite Student Modal */}
+       {selectedTopicForInvite && (
+        <InviteStudentModal
+            key={selectedTopicForInvite.id} // Force reset state when topic changes
+            topicId={selectedTopicForInvite.id}
+            topicTitle={selectedTopicForInvite.title}
+            isOpen={inviteModalOpen}
+            onClose={() => {
+                setInviteModalOpen(false);
+                setSelectedTopicForInvite(null);
+            }}
+        />
+       )}
     </>
   );
 };
