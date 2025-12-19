@@ -151,9 +151,9 @@ export interface DefenseCouncil {
   memberIds: string[]; // List of additional members (Uy vien)
   reviewerId: string;
   periodId: string;
-  date: string;
-  time: string;
-  room: string;
+  date?: string;
+  time?: string;
+  room?: string;
   topicIds: string[]; // Assigned topics
   status: "draft" | "published" | "completed";
   description?: string; // New: Description/Notes

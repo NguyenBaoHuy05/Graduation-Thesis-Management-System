@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import ThesisPeriodManagement from "./ThesisPeriodManagement";
 // Removed CommitteeProposal import as feature is merged to Head
+import DefenseScheduling from "./DefenseScheduling";
 import TeacherManagement from "./TeacherManagement";
 import StudentManagement from "./StudentManagement";
 import FormManagement from "./FormManagement";
@@ -22,7 +23,7 @@ import Image from "next/image";
 
 type TabType =
   | "periods"
-  | "committee"
+  | "defense_scheduling"
   | "teachers"
   | "students"
   | "forms"
@@ -38,6 +39,11 @@ export default function DeanSecretaryDashboard() {
       id: "periods" as TabType,
       name: "Quản lý kỳ khóa luận",
       icon: Calendar,
+    },
+    {
+      id: "defense_scheduling" as TabType,
+      name: "Lên lịch bảo vệ",
+      icon: Users,
     },
     {
       id: "teachers" as TabType,
@@ -65,6 +71,8 @@ export default function DeanSecretaryDashboard() {
     switch (activeTab) {
       case "periods":
         return <ThesisPeriodManagement />;
+      case "defense_scheduling":
+        return <DefenseScheduling />;
       case "teachers":
         return <TeacherManagement />;
       case "students":

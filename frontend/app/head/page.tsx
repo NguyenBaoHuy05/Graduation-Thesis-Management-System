@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import TopicManagement from "./TopicManagement";
-import CouncilManagement from "./CouncilManagement";
+import CouncilProposal from "./CouncilProposal";
 
 type TabType = "dashboard" | "topics" | "councils";
 
@@ -28,7 +28,7 @@ export default function HeadDashboard() {
     },
     {
       id: "councils" as TabType,
-      name: "Quản lý hội đồng",
+      name: "Đề xuất hội đồng",
       icon: Users,
     },
     // Add more tabs later
@@ -39,7 +39,7 @@ export default function HeadDashboard() {
       case "topics":
         return <TopicManagement />;
       case "councils":
-        return <CouncilManagement />;
+        return <CouncilProposal />;
       default:
         return <div className="p-6">Tính năng đang phát triển...</div>;
     }

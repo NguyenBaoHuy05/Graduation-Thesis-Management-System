@@ -2,16 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { mockNotifications, Notification } from "../../data/mockData";
-import {
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  X,
-  Bell,
-  Globe,
-  Lock,
-} from "lucide-react";
+import { Plus, Search, Edit, Trash2, X, Bell, Globe, Lock } from "lucide-react";
 
 /**
  * Management Component for Secretaries to Create/Edit/Delete Notifications
@@ -27,7 +18,11 @@ const NotificationManagement: React.FC = () => {
 
   const [selectedNotif, setSelectedNotif] = useState<Notification | null>(null);
 
-  const initialFormState: { title: string; content: string; type: Notification["type"] } = {
+  const initialFormState: {
+    title: string;
+    content: string;
+    type: Notification["type"];
+  } = {
     title: "",
     content: "",
     type: "public",
@@ -41,7 +36,9 @@ const NotificationManagement: React.FC = () => {
 
   // --- Handlers ---
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -127,7 +124,9 @@ const NotificationManagement: React.FC = () => {
     <div className="space-y-6 p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Quản lý thông báo</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Quản lý thông báo
+          </h2>
           <p className="text-sm text-gray-500">
             Tạo và quản lý các thông báo chung và nội bộ
           </p>
@@ -239,7 +238,10 @@ const NotificationManagement: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                  <td
+                    colSpan={5}
+                    className="px-6 py-12 text-center text-gray-500"
+                  >
                     Không có thông báo nào.
                   </td>
                 </tr>
@@ -251,7 +253,7 @@ const NotificationManagement: React.FC = () => {
 
       {/* Add/Edit Modal */}
       {(isAddModalOpen || isEditModalOpen) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-gray-900">
