@@ -1,37 +1,78 @@
 "use client";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, FileText, Users, Menu, X } from "lucide-react";
-import TopicManagement from "./TopicManagement";
-import CommitteeProposal from "./CommitteeProposal";
+import {
+  LogOut,
+  Users,
+  Menu,
+  X,
+  Calendar,
+  GraduationCap,
+  UserSquare,
+  ClipboardList,
+  Bell,
+} from "lucide-react";
+import ThesisPeriodManagement from "./ThesisPeriodManagement";
+// Removed CommitteeProposal import as feature is merged to Head
+import TeacherManagement from "./TeacherManagement";
+import StudentManagement from "./StudentManagement";
+import FormManagement from "./FormManagement";
+import NotificationManagement from "./NotificationManagement";
 import Image from "next/image";
 
-type TabType = "topics" | "committee";
+type TabType =
+  | "periods"
+  | "committee"
+  | "teachers"
+  | "students"
+  | "forms"
+  | "notifications";
 
 export default function DeanSecretaryDashboard() {
   const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>("topics");
+  const [activeTab, setActiveTab] = useState<TabType>("periods");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const tabs = [
     {
-      id: "topics" as TabType,
-      name: "Quản lý danh sách đề tài",
-      icon: FileText,
+      id: "periods" as TabType,
+      name: "Quản lý kỳ khóa luận",
+      icon: Calendar,
     },
     {
-      id: "committee" as TabType,
-      name: "Đề xuất hội đồng bảo vệ",
-      icon: Users,
+      id: "teachers" as TabType,
+      name: "Quản lý giảng viên",
+      icon: GraduationCap,
+    },
+    {
+      id: "students" as TabType,
+      name: "Quản lý sinh viên",
+      icon: UserSquare,
+    },
+    {
+      id: "forms" as TabType,
+      name: "Quản lý biểu mẫu",
+      icon: ClipboardList,
+    },
+    {
+      id: "notifications" as TabType,
+      name: "Quản lý thông báo",
+      icon: Bell,
     },
   ];
 
   const renderContent = () => {
     switch (activeTab) {
-      case "topics":
-        return <TopicManagement />;
-      case "committee":
-        return <CommitteeProposal />;
+      case "periods":
+        return <ThesisPeriodManagement />;
+      case "teachers":
+        return <TeacherManagement />;
+      case "students":
+        return <StudentManagement />;
+      case "forms":
+        return <FormManagement />;
+      case "notifications":
+        return <NotificationManagement />;
       default:
         return null;
     }

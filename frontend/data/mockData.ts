@@ -14,6 +14,7 @@ export interface ThesisPeriod {
   startDate: string;
   endDate: string;
   status: "planning" | "active" | "closed";
+  maxGroupSize: number;
   milestones: PeriodMilestone[];
 }
 
@@ -146,30 +147,48 @@ export interface DefenseCouncil {
   name: string;
   presidentId: string;
   secretaryId: string;
-  memberId: string;
+  commissionerId?: string; // Optional single member
+  memberIds: string[]; // List of additional members (Uy vien)
   reviewerId: string;
   periodId: string;
-}
-
-export interface DefenseSession {
-  id: string;
-  councilId: string;
-  registrationId: string;
   date: string;
   time: string;
   room: string;
+  topicIds: string[]; // Assigned topics
+  status: "draft" | "published" | "completed";
+  description?: string; // New: Description/Notes
 }
 
-
+export const mockCouncils: DefenseCouncil[] = [
+  {
+    id: "dc1",
+    name: "Hội đồng bảo vệ K17 - Đợt 1",
+    presidentId: "t1",
+    secretaryId: "t5",
+    memberIds: ["t3"],
+    reviewerId: "t4",
+    periodId: "per1",
+    date: "2026-12-20",
+    time: "08:00",
+    room: "C.301",
+    topicIds: ["tp1"],
+    status: "published",
+    description: "Hội đồng bảo vệ đợt 1 - Khoa CNTT",
+  },
+];
 
 export interface Notification {
   id: string;
-  userId: string;
   title: string;
-  message: string;
-  type: "info" | "warning" | "success" | "error";
-  isRead: boolean;
-  createdAt: string;
+  // Unified fields
+  content: string;
+  date: string;
+  type: "public" | "internal" | "info" | "success" | "warning" | "error";
+  isRead?: boolean;
+  // Legacy fields (optional)
+  userId?: string;
+  message?: string;
+  createdAt?: string;
 }
 
 export interface Complaint {
@@ -232,25 +251,127 @@ export interface User {
 
 export const mockUsers: User[] = [
   // Students
-  { id: "u1", username: "SV001", password: "123", role: "student", profileId: "st1" },
-  { id: "u2", username: "SV002", password: "123", role: "student", profileId: "st2" },
-  { id: "u3", username: "SV003", password: "123", role: "student", profileId: "st3" },
-  { id: "u4", username: "SV004", password: "123", role: "student", profileId: "st4" },
-  { id: "u5", username: "SV005", password: "123", role: "student", profileId: "st5" },
-  { id: "u6", username: "SV006", password: "123", role: "student", profileId: "st6" },
-  { id: "u7", username: "SV007", password: "123", role: "student", profileId: "st7" },
-  { id: "u8", username: "SV008", password: "123", role: "student", profileId: "st8" },
-  { id: "u9", username: "SV009", password: "123", role: "student", profileId: "st9" },
-  { id: "u10", username: "SV010", password: "123", role: "student", profileId: "st10" },
+  {
+    id: "u1",
+    username: "SV001",
+    password: "123",
+    role: "student",
+    profileId: "st1",
+  },
+  {
+    id: "u2",
+    username: "SV002",
+    password: "123",
+    role: "student",
+    profileId: "st2",
+  },
+  {
+    id: "u3",
+    username: "SV003",
+    password: "123",
+    role: "student",
+    profileId: "st3",
+  },
+  {
+    id: "u4",
+    username: "SV004",
+    password: "123",
+    role: "student",
+    profileId: "st4",
+  },
+  {
+    id: "u5",
+    username: "SV005",
+    password: "123",
+    role: "student",
+    profileId: "st5",
+  },
+  {
+    id: "u6",
+    username: "SV006",
+    password: "123",
+    role: "student",
+    profileId: "st6",
+  },
+  {
+    id: "u7",
+    username: "SV007",
+    password: "123",
+    role: "student",
+    profileId: "st7",
+  },
+  {
+    id: "u8",
+    username: "SV008",
+    password: "123",
+    role: "student",
+    profileId: "st8",
+  },
+  {
+    id: "u9",
+    username: "SV009",
+    password: "123",
+    role: "student",
+    profileId: "st9",
+  },
+  {
+    id: "u10",
+    username: "SV010",
+    password: "123",
+    role: "student",
+    profileId: "st10",
+  },
   // Teachers
-  { id: "u11", username: "GV001", password: "123", role: "teacher", profileId: "t1" },
-  { id: "u12", username: "GV002", password: "123", role: "teacher", profileId: "t2" },
-  { id: "u13", username: "GV003", password: "123", role: "teacher", profileId: "t3" },
-  { id: "u14", username: "GV004", password: "123", role: "teacher", profileId: "t4" },
-  { id: "u15", username: "GV005", password: "123", role: "teacher", profileId: "t5" },
+  {
+    id: "u11",
+    username: "GV001",
+    password: "123",
+    role: "teacher",
+    profileId: "t1",
+  },
+  {
+    id: "u12",
+    username: "GV002",
+    password: "123",
+    role: "teacher",
+    profileId: "t2",
+  },
+  {
+    id: "u13",
+    username: "GV003",
+    password: "123",
+    role: "teacher",
+    profileId: "t3",
+  },
+  {
+    id: "u14",
+    username: "GV004",
+    password: "123",
+    role: "teacher",
+    profileId: "t4",
+  },
+  {
+    id: "u15",
+    username: "GV005",
+    password: "123",
+    role: "teacher",
+    profileId: "t5",
+  },
   // Head & Secretary
-  { id: "u16", username: "HD001", password: "123", role: "head", profileId: "h1" },
-  { id: "u17", username: "SC001", password: "123", role: "secretary", profileId: "s1" },
+  {
+    id: "u16",
+    username: "HD001",
+    password: "123",
+    role: "head",
+    profileId: "h1",
+  },
+  {
+    id: "u17",
+    username: "SC001",
+    password: "123",
+    role: "secretary",
+    profileId: "s1",
+  },
 ];
 
 export const mockThesisPeriods: ThesisPeriod[] = [
@@ -261,6 +382,7 @@ export const mockThesisPeriods: ThesisPeriod[] = [
     startDate: "2025-08-01",
     endDate: "2026-01-15",
     status: "active",
+    maxGroupSize: 3,
     milestones: [
       {
         id: "m01",
@@ -274,31 +396,31 @@ export const mockThesisPeriods: ThesisPeriod[] = [
         id: "m02",
         name: "Nộp đề cương chi tiết",
         startDate: "2025-09-01",
-        endDate: "2025-09-15",
+        endDate: "2026-09-15",
         type: "submission",
         description: "Nộp file đề cương để duyệt",
       },
       {
         id: "m03",
         name: "Báo cáo tiến độ Lần 1",
-        startDate: "2025-10-15",
-        endDate: "2025-10-20",
+        startDate: "2026-10-15",
+        endDate: "2026-10-20",
         type: "reporting",
         description: "Báo cáo tiến độ thực hiện 50%",
       },
       {
         id: "m04",
         name: "Nộp toàn văn khóa luận",
-        startDate: "2025-12-01",
-        endDate: "2025-12-15",
+        startDate: "2026-12-01",
+        endDate: "2026-12-15",
         type: "submission",
         description: "Hạn chót nộp báo cáo và source code",
       },
       {
         id: "m05",
         name: "Bảo vệ trước hội đồng",
-        startDate: "2025-12-20",
-        endDate: "2025-12-25",
+        startDate: "2026-12-20",
+        endDate: "2026-12-25",
         type: "defense",
         description: "Lịch bảo vệ chính thức",
       },
@@ -311,28 +433,29 @@ export const mockThesisPeriods: ThesisPeriod[] = [
     startDate: "2025-01-15",
     endDate: "2025-06-15",
     status: "closed",
+    maxGroupSize: 3,
     milestones: [
-        {
-            id: "m_old_01",
-            name: "Đăng ký đề tài",
-            startDate: "2025-01-20",
-            endDate: "2025-02-05",
-            type: "registration",
-        },
-        {
-            id: "m_old_02",
-            name: "Nộp khóa luận",
-            startDate: "2025-05-15",
-            endDate: "2025-05-20",
-            type: "submission",
-        },
-        {
-            id: "m_old_03",
-            name: "Bảo vệ",
-            startDate: "2025-06-01",
-            endDate: "2025-06-10",
-            type: "defense",
-        }
+      {
+        id: "m_old_01",
+        name: "Đăng ký đề tài",
+        startDate: "2025-01-20",
+        endDate: "2025-02-05",
+        type: "registration",
+      },
+      {
+        id: "m_old_02",
+        name: "Nộp khóa luận",
+        startDate: "2025-05-15",
+        endDate: "2025-05-20",
+        type: "submission",
+      },
+      {
+        id: "m_old_03",
+        name: "Bảo vệ",
+        startDate: "2025-06-01",
+        endDate: "2025-06-10",
+        type: "defense",
+      },
     ],
   },
 ];
@@ -435,16 +558,220 @@ export const mockTeachers: Teacher[] = [
 ];
 
 export const mockStudents: Student[] = [
-  { id: "st1", code: "SV001", name: "Nguyễn Minh Đức", email: "duc.nm@student.edu.vn", phone: "0934567890", class: "CNTT-K17", major: "Công nghệ thông tin", gpa: 3.5, creditsAccumulated: 130 },
-  { id: "st2", code: "SV002", name: "Phạm Thu Hà", email: "ha.pt@student.edu.vn", phone: "0945678901", class: "CNTT-K17", major: "Công nghệ thông tin", gpa: 3.2, creditsAccumulated: 125 },
-  { id: "st3", code: "SV003", name: "Trần Văn Nam", email: "nam.tv@student.edu.vn", phone: "0956789012", class: "CNTT-K17", major: "Công nghệ thông tin", gpa: 2.8, creditsAccumulated: 110 },
-  { id: "st4", code: "SV004", name: "Lê Thị Mai", email: "mai.lt@student.edu.vn", phone: "0967890123", class: "CNTT-K17", major: "Công nghệ thông tin", gpa: 3.6, creditsAccumulated: 132 },
-  { id: "st5", code: "SV005", name: "Hoàng Văn Long", email: "long.hv@student.edu.vn", phone: "0978901234", class: "CNTT-K17", major: "An ninh mạng", gpa: 3.0, creditsAccumulated: 120 },
-  { id: "st6", code: "SV006", name: "Vũ Thị Anh", email: "anh.vt@student.edu.vn", phone: "0989012345", class: "CNTT-K17", major: "Hệ thống thông tin", gpa: 3.4, creditsAccumulated: 128 },
-  { id: "st7", code: "SV007", name: "Đặng Văn Hùng", email: "hung.dv@student.edu.vn", phone: "0990123456", class: "CNTT-K17", major: "Công nghệ phần mềm", gpa: 2.5, creditsAccumulated: 100 },
-  { id: "st8", code: "SV008", name: "Bùi Thị Lan", email: "lan.bt@student.edu.vn", phone: "0901234560", class: "CNTT-K17", major: "Khoa học dữ liệu", gpa: 3.8, creditsAccumulated: 135 },
-  { id: "st9", code: "SV009", name: "Ngô Văn Tuấn", email: "tuan.nv@student.edu.vn", phone: "0912345601", class: "CNTT-K17", major: "Công nghệ thông tin", gpa: 3.1, creditsAccumulated: 122 },
-  { id: "st10", code: "SV010", name: "Lý Thị Phương", email: "phuong.lt@student.edu.vn", phone: "0923456712", class: "CNTT-K17", major: "Trí tuệ nhân tạo", gpa: 3.3, creditsAccumulated: 126 },
+  {
+    id: "st1",
+    code: "SV001",
+    name: "Nguyễn Minh Đức",
+    email: "duc.nm@student.edu.vn",
+    phone: "0934567890",
+    class: "CNTT-K17",
+    major: "Công nghệ thông tin",
+    gpa: 3.5,
+    creditsAccumulated: 130,
+  },
+  {
+    id: "st2",
+    code: "SV002",
+    name: "Phạm Thu Hà",
+    email: "ha.pt@student.edu.vn",
+    phone: "0945678901",
+    class: "CNTT-K17",
+    major: "Công nghệ thông tin",
+    gpa: 3.2,
+    creditsAccumulated: 125,
+  },
+  {
+    id: "st3",
+    code: "SV003",
+    name: "Trần Văn Nam",
+    email: "nam.tv@student.edu.vn",
+    phone: "0956789012",
+    class: "CNTT-K17",
+    major: "Công nghệ thông tin",
+    gpa: 2.8,
+    creditsAccumulated: 110,
+  },
+  {
+    id: "st4",
+    code: "SV004",
+    name: "Lê Thị Mai",
+    email: "mai.lt@student.edu.vn",
+    phone: "0967890123",
+    class: "CNTT-K17",
+    major: "Công nghệ thông tin",
+    gpa: 3.6,
+    creditsAccumulated: 132,
+  },
+  {
+    id: "st5",
+    code: "SV005",
+    name: "Hoàng Văn Long",
+    email: "long.hv@student.edu.vn",
+    phone: "0978901234",
+    class: "CNTT-K17",
+    major: "An ninh mạng",
+    gpa: 3.0,
+    creditsAccumulated: 120,
+  },
+  {
+    id: "st6",
+    code: "SV006",
+    name: "Vũ Thị Anh",
+    email: "anh.vt@student.edu.vn",
+    phone: "0989012345",
+    class: "CNTT-K17",
+    major: "Hệ thống thông tin",
+    gpa: 3.4,
+    creditsAccumulated: 128,
+  },
+  {
+    id: "st7",
+    code: "SV007",
+    name: "Đặng Văn Hùng",
+    email: "hung.dv@student.edu.vn",
+    phone: "0990123456",
+    class: "CNTT-K17",
+    major: "Công nghệ phần mềm",
+    gpa: 2.5,
+    creditsAccumulated: 100,
+  },
+  {
+    id: "st8",
+    code: "SV008",
+    name: "Bùi Thị Lan",
+    email: "lan.bt@student.edu.vn",
+    phone: "0901234560",
+    class: "CNTT-K17",
+    major: "Khoa học dữ liệu",
+    gpa: 3.8,
+    creditsAccumulated: 135,
+  },
+  {
+    id: "st9",
+    code: "SV009",
+    name: "Ngô Văn Tuấn",
+    email: "tuan.nv@student.edu.vn",
+    phone: "0912345601",
+    class: "CNTT-K17",
+    major: "Công nghệ thông tin",
+    gpa: 3.1,
+    creditsAccumulated: 122,
+  },
+  {
+    id: "st10",
+    code: "SV010",
+    name: "Lý Thị Phương",
+    email: "phuong.lt@student.edu.vn",
+    phone: "0923456712",
+    class: "CNTT-K17",
+    major: "Trí tuệ nhân tạo",
+    gpa: 3.3,
+    creditsAccumulated: 126,
+  },
+];
+
+// Duplicate FormTemplate removed.
+// Old mockForms removed. Use the ones below or merge here.
+
+export const mockForms: FormTemplate[] = [
+  // Migrated from old mockForms
+  {
+    id: "f1",
+    name: "Mẫu đơn xin bảo vệ Đồ án Tốt nghiệp",
+    fileUrl: "/forms/don-xin-bao-ve.doc",
+    uploadDate: "2024-01-15",
+    description: "Mẫu đơn chuẩn",
+    type: "defense_request",
+  },
+  {
+    id: "f2",
+    name: "Mẫu phiếu theo dõi thực hiện",
+    fileUrl: "/forms/phieu-theo-doi.doc",
+    uploadDate: "2024-01-20",
+    description: "Theo dõi tiến độ",
+    type: "other",
+  },
+  {
+    id: "f3",
+    name: "Mẫu trình bày Phụ bìa cho Đồ án Tốt nghiệp",
+    fileUrl: "/forms/phu-bia-do-an.doc",
+    uploadDate: "2024-02-01",
+    description: "Quy định trình bày phụ bìa",
+    type: "thesis",
+  },
+  {
+    id: "f4",
+    name: "Mẫu trình bày Bìa ngoài cho Đồ án Tốt nghiệp",
+    fileUrl: "/forms/bia-ngoai-do-an.doc",
+    uploadDate: "2024-02-01",
+    description: "Quy định bìa ngoài",
+    type: "thesis",
+  },
+  {
+    id: "f5",
+    name: "Mẫu đơn xin Bảo vệ Luận văn Tốt nghiệp",
+    fileUrl: "/forms/don-xin-bao-ve-luan-van.doc",
+    uploadDate: "2024-02-10",
+    description: "Cho hệ thạc sĩ",
+    type: "defense_request",
+  },
+  {
+    id: "f6",
+    name: "Mẫu trình bày Phụ bìa cho Luận văn Tốt nghiệp",
+    fileUrl: "/forms/phu-bia-luan-van.doc",
+    uploadDate: "2024-02-15",
+    description: "Phụ bìa luận văn",
+    type: "thesis",
+  },
+  {
+    id: "f7",
+    name: "Mẫu trình bày Bìa ngoài cho Luận văn Tốt nghiệp",
+    fileUrl: "/forms/bia-ngoai-luan-van.doc",
+    uploadDate: "2024-02-15",
+    description: "Bìa ngoài luận văn",
+    type: "thesis",
+  },
+  {
+    id: "f8",
+    name: "Mẫu trình bày Đề cương Luận văn Tốt nghiệp",
+    fileUrl: "/forms/de-cuong-luan-van.doc",
+    uploadDate: "2024-03-01",
+    description: "Quy định đề cương",
+    type: "outline",
+  },
+  {
+    id: "f9",
+    name: "Mẫu đăng ký Đồ án Tốt nghiệp",
+    fileUrl: "/forms/dang-ky-do-an.doc",
+    uploadDate: "2023-12-01",
+    description: "Form đăng ký",
+    type: "other",
+  },
+  // Merged from new seeded mockFormTemplates
+  {
+    id: "ft1",
+    name: "Mẫu đề cương chi tiết",
+    description: "Dùng cho sinh viên đăng ký đề tài.",
+    fileUrl: "/templates/mau_de_cuong.doc",
+    uploadDate: "2025-08-01",
+    type: "outline",
+  },
+  {
+    id: "ft2",
+    name: "Đơn xin bảo vệ khóa luận",
+    description: "Sinh viên điền và nộp khi hoàn thành đồ án.",
+    fileUrl: "/templates/don_xin_bao_ve.doc",
+    uploadDate: "2025-08-01",
+    type: "defense_request",
+  },
+  {
+    id: "ft3",
+    name: "Mẫu báo cáo tiến độ tuần",
+    description: "Báo cáo công việc hàng tuần.",
+    fileUrl: "/templates/bao_cao_tien_do.doc",
+    uploadDate: "2025-08-05",
+    type: "report",
+  },
 ];
 
 export const mockTopics: Topic[] = [
@@ -453,7 +780,8 @@ export const mockTopics: Topic[] = [
     id: "tp1",
     code: "DT001",
     title: "Xây dựng hệ thống chatbot hỗ trợ tư vấn sử dụng AI",
-    description: "Nghiên cứu và xây dựng hệ thống chatbot thông minh có khả năng hiểu ngữ cảnh.",
+    description:
+      "Nghiên cứu và xây dựng hệ thống chatbot thông minh có khả năng hiểu ngữ cảnh.",
     requirements: "Python, NLP, Deep Learning.",
     references: ["NLP with Python", "Chatbot Design"],
     teacherId: "t1",
@@ -534,7 +862,8 @@ export const mockTopics: Topic[] = [
     id: "tp6",
     code: "DT006",
     title: "Nghiên cứu Blockchain trong quản lý chuỗi cung ứng",
-    description: "Tracking sản phẩm nông nghiệp sạch. (Chuyển giao từ SV đề xuất)",
+    description:
+      "Tracking sản phẩm nông nghiệp sạch. (Chuyển giao từ SV đề xuất)",
     requirements: "Solidity, Web3.",
     references: ["Mastering Ethereum"],
     teacherId: "t2", // Assigned to a teacher
@@ -577,7 +906,7 @@ export const mockTopics: Topic[] = [
     createdAt: "2025-08-10",
     periodId: "per1",
   },
-    // New Topics for seeding
+  // New Topics for seeding
   {
     id: "tp9",
     code: "DT009",
@@ -619,7 +948,7 @@ export const mockRegistrations: ThesisRegistration[] = [
     studentId: "st1",
     topicId: "tp1",
     teacherId: "t1",
-    status: "in_progress",
+    status: "outline_pending",
     registeredAt: "2025-09-01",
     outlineSubmittedAt: "2025-09-15",
     outlineFeedback: "Đề cương ổn, cần update timeline.",
@@ -678,12 +1007,12 @@ export const mockRegistrations: ThesisRegistration[] = [
     studentId: "st8",
     topicId: "tp9",
     teacherId: "t4",
-    status: "in_progress",
+    status: "submitted",
     registeredAt: "2025-09-10",
     outlineSubmittedAt: "2025-09-20",
     outlineFileUrl: "http://example.com/outline_st8.pdf",
   },
-   // Student 10 - Topic 1 (Joined Topic 1 as 2nd student)
+  // Student 10 - Topic 1 (Joined Topic 1 as 2nd student)
   {
     id: "reg7",
     studentId: "st10",
@@ -695,6 +1024,29 @@ export const mockRegistrations: ThesisRegistration[] = [
     thesisSubmittedAt: "2025-12-14",
     outlineFileUrl: "http://example.com/outline_st10.pdf",
     thesisFileUrl: "http://example.com/thesis_st10.zip",
+  },
+];
+
+export const mockProgressReports: ProgressReport[] = [
+  {
+    id: "pr1",
+    registrationId: "reg1",
+    title: "Báo cáo tuần 1",
+    content:
+      "Đã nghiên cứu xong tài liệu về NLP cơ bản. Đang tìm hiểu thư viện HuggingFace.",
+    planNext: "Cài đặt môi trường, chạy thử model BERT.",
+    submittedAt: "2025-09-20",
+    status: "approved",
+    feedback: "Tốt, cần tập trung vào tiếng Việt.",
+  },
+  {
+    id: "pr2",
+    registrationId: "reg1",
+    title: "Báo cáo tuần 2",
+    content: "Đã chạy thử model, độ chính xác chưa cao.",
+    planNext: "Fine-tune lại model với dataset lớn hơn.",
+    submittedAt: "2025-09-27",
+    status: "pending",
   },
 ];
 
@@ -727,7 +1079,7 @@ export const mockTimelines: Timeline[] = [
     dueDate: "2025-11-20",
     status: "pending",
   },
-   // For Reg 6
+  // For Reg 6
   {
     id: "tl4",
     registrationId: "reg6",
@@ -768,6 +1120,15 @@ export const mockPlagiarismChecks: PlagiarismCheck[] = [
     reportFile: "turnitin_report_st10.pdf",
     feedback: "Tỷ lệ trùng lặp cao, cần viết lại chương 2.",
   },
+  {
+    id: "pc3",
+    studentId: "st1",
+    registrationId: "reg1",
+    similarityPercentage: 0,
+    checkDate: "",
+    status: "pending",
+    reportFile: "",
+  },
 ];
 
 export const mockDefenseRegistrations: DefenseRegistration[] = [
@@ -794,75 +1155,52 @@ export const mockDefenseRegistrations: DefenseRegistration[] = [
   },
 ];
 
-export const mockDefenseCouncils: DefenseCouncil[] = [
-  {
-    id: "dc1",
-    name: "Hội đồng CNTT 1",
-    presidentId: "t1",
-    secretaryId: "t2",
-    memberId: "t3",
-    reviewerId: "t4",
-    periodId: "per1",
-  },
-  {
-    id: "dc2",
-    name: "Hội đồng KHMT 1",
-    presidentId: "t5",
-    secretaryId: "t4",
-    memberId: "t2",
-    reviewerId: "t1",
-    periodId: "per1",
-  },
-];
-
-export const mockDefenseSessions: DefenseSession[] = [
-  {
-    id: "ds1",
-    councilId: "dc1",
-    registrationId: "reg2",
-    date: "2025-12-20",
-    time: "08:00",
-    room: "Phòng E101",
-  },
-];
-
+// Legacy mock data removed
 
 export const mockNotifications: Notification[] = [
   {
     id: "n1",
-    userId: "st1",
-    title: "Phản hồi đề cương",
-    message: "Giáo viên hướng dẫn đã phản hồi đề cương của bạn.",
-    type: "info",
-    isRead: false,
-    createdAt: "2025-09-16T10:30:00",
+    title: "Thông báo về việc nộp đề cương Khóa luận tốt nghiệp đợt 1 năm 2024",
+    content:
+      "Sinh viên nộp đề cương qua hệ thống trước ngày 20/03/2024. Vui lòng tham khảo mẫu đề cương trong mục Biểu mẫu.",
+    date: "2024-03-01",
+    type: "public",
   },
   {
     id: "n2",
-    userId: "st2",
-    title: "Lịch bảo vệ khóa luận",
-    message: "Lịch bảo vệ: 20/12/2025, 08:00 tại phòng E101",
-    type: "success",
-    isRead: true,
-    createdAt: "2025-12-10T14:00:00",
+    title: "Lịch bảo vệ Đồ án tốt nghiệp đợt 1",
+    content:
+      "Lịch bảo vệ dự kiến sẽ diễn ra vào ngày 15/05/2024. Sinh viên chú ý theo dõi danh sách hội đồng.",
+    date: "2024-04-10",
+    type: "public",
   },
   {
     id: "n3",
-    userId: "t1",
-    title: "Sinh viên nộp đề cương",
-    message: "Sinh viên Lê Thị Mai đã nộp đề cương.",
-    type: "info",
+    title: "Nhắc nhở nộp báo cáo tiến độ",
+    content:
+      "Sinh viên thực hiện nộp báo cáo tiến độ tuần 5 trước 23:59 Chủ nhật.",
+    date: "2024-03-15",
+    type: "internal",
     isRead: false,
-    createdAt: "2025-09-18T16:45:00",
   },
   {
     id: "n4",
-    userId: "st8",
-    title: "Mời tham gia đề tài",
-    message: "Bạn nhận được lời mời tham gia đề tài từ GV TS. Phạm Văn Dũng.",
+    title: "Thông báo họp Hội đồng khoa",
+    content:
+      "Kính mời quý thầy cô tham dự họp Hội đồng khoa vào 8:00 ngày 20/03/2024 tại phòng A.101.",
+    date: "2024-03-18",
+    type: "internal",
+    isRead: true,
+  },
+  // Legacy data adapted
+  {
+    id: "n01",
+    userId: "st1",
+    title: "Phản hồi đề cương",
+    content: "Giáo viên hướng dẫn đã phản hồi đề cương của bạn.",
+    date: "2025-09-16",
     type: "info",
     isRead: false,
-    createdAt: "2025-08-25T09:00:00",
   },
 ];
 
@@ -879,33 +1217,6 @@ export const mockComplaints: Complaint[] = [
 ];
 
 // --- SEEDED DATA FOR NEW INTERFACES ---
-
-export const mockFormTemplates: FormTemplate[] = [
-  {
-    id: "ft1",
-    name: "Mẫu đề cương chi tiết",
-    description: "Dùng cho sinh viên đăng ký đề tài.",
-    fileUrl: "/templates/mau_de_cuong.doc",
-    uploadDate: "2025-08-01",
-    type: "outline",
-  },
-  {
-    id: "ft2",
-    name: "Đơn xin bảo vệ khóa luận",
-    description: "Sinh viên điền và nộp khi hoàn thành đồ án.",
-    fileUrl: "/templates/don_xin_bao_ve.doc",
-    uploadDate: "2025-08-01",
-    type: "defense_request",
-  },
-  {
-    id: "ft3",
-    name: "Mẫu báo cáo tiến độ tuần",
-    description: "Báo cáo công việc hàng tuần.",
-    fileUrl: "/templates/bao_cao_tien_do.doc",
-    uploadDate: "2025-08-05",
-    type: "report",
-  },
-];
 
 export const mockTopicInvitations: TopicInvitation[] = [
   {
@@ -926,28 +1237,5 @@ export const mockTopicInvitations: TopicInvitation[] = [
     status: "pending",
     sentAt: "2025-08-27",
     message: "Mời em tham gia nghiên cứu chatbot.",
-  },
-];
-
-export const mockProgressReports: ProgressReport[] = [
-  {
-    id: "pr1",
-    registrationId: "reg1",
-    title: "Báo cáo tuần 1 tháng 10",
-    content: "Đã đọc xong tài liệu về Transformer architecture.",
-    planNext: "Bắt đầu code phần tiền xử lý dữ liệu.",
-    submittedAt: "2025-10-07",
-    status: "approved",
-    feedback: "Ok, tiếp tục phát huy.",
-  },
-  {
-    id: "pr2",
-    registrationId: "reg6",
-    title: "Báo cáo tiến độ Crawl Data",
-    content: "Đã crawl được 10,000 records phim từ IMDB.",
-    planNext: "Clean data và EDA.",
-    submittedAt: "2025-10-08",
-    status: "approved",
-    fileUrl: "http://example.com/report_crawling.pdf",
   },
 ];

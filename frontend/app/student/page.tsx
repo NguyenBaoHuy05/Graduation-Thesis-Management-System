@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Student } from "@/data/mockData";
@@ -13,17 +13,22 @@ import {
   Menu,
   X,
   User,
+  Upload,
 } from "lucide-react";
 import Image from "next/image";
 import ThesisRegistration from "./ThesisRegistration";
 import OutlineSubmission from "./OutlineSubmission";
 import ThesisProgress from "./ThesisProgress";
+import ThesisSubmission from "./ThesisSubmission";
 import ComplaintForm from "./ComplaintForm";
 import NotificationList from "./NotificationList";
+
+import { mockNotifications, Notification } from "@/data/mockData";
 
 type TabType =
   | "registration"
   | "outline"
+  | "submission" // Added submission
   | "progress"
   | "complaint"
   | "notification";
@@ -42,16 +47,18 @@ const StudentDashboard: React.FC = () => {
       icon: BookOpen,
     },
     { id: "outline" as TabType, name: "Nộp đề cương", icon: FileText },
+    { id: "submission" as TabType, name: "Nộp khóa luận", icon: Upload }, // Added new tab item
     { id: "progress" as TabType, name: "Theo dõi tiến độ", icon: TrendingUp },
     { id: "complaint" as TabType, name: "Khiếu nại", icon: Shield },
     { id: "notification" as TabType, name: "Thông báo", icon: Bell },
-
   ];
 
   const renderContent = () => {
     switch (activeTab) {
       case "outline":
         return <OutlineSubmission />;
+      case "submission": // Added new case
+        return <ThesisSubmission />;
       case "progress":
         return <ThesisProgress />;
       case "complaint":
@@ -62,7 +69,21 @@ const StudentDashboard: React.FC = () => {
         return <ThesisRegistration />;
     }
   };
+  const { user } = useAuth();
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [internalNotifs, setInternalNotifs] = useState<Notification[]>([]);
 
+  useEffect(() => {
+    // Only show internal notifications if user is logged in
+    if (user) {
+      const internal = mockNotifications.filter((n) => n.type === "internal");
+      setInternalNotifs(internal);
+    } else {
+      setInternalNotifs([]);
+    }
+  }, [user]);
+
+  const unreadCount = internalNotifs.filter((n) => !n.isRead).length;
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
@@ -104,6 +125,66 @@ const StudentDashboard: React.FC = () => {
                 <LogOut size={18} />
                 <span className="text-sm font-medium">Đăng xuất</span>
               </button>
+              {user && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowNotifs(!showNotifs)}
+                    className="p-2 rounded-full hover:bg-gray-100 relative transition"
+                  >
+                    <Bell size={24} className="text-gray-600" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Dropdown */}
+                  {showNotifs && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                        <h3 className="font-bold text-sm text-gray-700">
+                          Thông báo của bạn
+                        </h3>
+                        <button className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                          Đánh dấu đã đọc
+                        </button>
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {internalNotifs.length > 0 ? (
+                          internalNotifs.map((n) => (
+                            <div
+                              key={n.id}
+                              className={`px-4 py-3 hover:bg-gray-50 border-b last:border-0 border-gray-100 cursor-pointer ${
+                                !n.isRead ? "bg-blue-50/50" : ""
+                              }`}
+                            >
+                              <p className="text-sm font-semibold text-gray-800 line-clamp-1">
+                                {n.title}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                {n.content}
+                              </p>
+                              <p className="text-[10px] text-gray-400 mt-2 text-right">
+                                {n.date}
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-sm text-gray-500">
+                            Không có thông báo mới
+                          </div>
+                        )}
+                      </div>
+                      <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-center">
+                        <button className="text-xs font-bold text-blue-600 hover:text-blue-800">
+                          Xem tất cả
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <button
