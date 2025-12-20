@@ -1,24 +1,56 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import Navbar from "@/components/Navbar";
 import Header from "@/components/Header";
 import TimelineSection from "@/components/TimelineSection";
 import {
-  mockThesisPeriods,
   mockNotifications,
   Notification,
+  ThesisPeriod,
 } from "../data/mockData";
 import { Globe, Book, Users, FileText, Bell } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext"; // Added import
 
+interface GetThesisPeriodsData {
+  thesisPeriods: ThesisPeriod[];
+}
+
+const GET_THESIS_PERIODS = gql`
+  query GetThesisPeriods {
+    thesisPeriods {
+      id
+      name
+      academicYear
+      startDate
+      endDate
+      status
+      maxGroupSize
+      milestones {
+        id
+        name
+        startDate
+        endDate
+        type
+        description
+      }
+    }
+  }
+`;
+
 export default function Home() {
   const { user } = useAuth(); // Get user
-  // Get the active period or the first one
+
+  const { loading, error, data } =
+    useQuery<GetThesisPeriodsData>(GET_THESIS_PERIODS);
+
+  // Get the active period or the first one from fetched data
+  const periods = data?.thesisPeriods || [];
   const activePeriod =
-    mockThesisPeriods.find((p) => p.status === "active") ||
-    mockThesisPeriods[0];
+    periods.find((p: any) => p.status === "active") || periods[0];
 
   const quickLinks = [
     { name: "KHOA HỌC MÁY TÍNH", color: "bg-[#005c9d]", icon: Globe },

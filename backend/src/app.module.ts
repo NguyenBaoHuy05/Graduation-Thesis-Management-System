@@ -13,9 +13,9 @@ import { ConfigModule } from '@nestjs/config';
 
 // join dùng để xác định đường dẫn file schema được sinh tự động
 import { join } from 'path';
-import { User } from './users/user.entity';
-import { UsersModule } from './users/user.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { ThesisPeriodsModule } from './thesisPeriods/thesisPeriods.module';
+import { FormTemplatesModule } from './formTemplates/formTemplates.module';
 
 /**
  * AppModule
@@ -52,7 +52,8 @@ import { SupabaseModule } from './supabase/supabase.module';
       introspection: true,
     }),
     SupabaseModule,
-    UsersModule,
+    ThesisPeriodsModule,
+    FormTemplatesModule,
   ],
 
   // // Controllers: nơi định nghĩa các route HTTP (nếu có). Ở đây `AppController`

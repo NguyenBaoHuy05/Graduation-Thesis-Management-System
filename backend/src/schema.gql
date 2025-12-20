@@ -2,18 +2,43 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+input MilestoneInput {
+  description: String
+  endDate: String
+  id: String!
+  name: String!
+  startDate: String!
+  type: String!
+}
+
 type Mutation {
-  createUser(email: String!, name: String!): User!
+  createThesisPeriod(academicYear: String!, endDate: String!, maxGroupSize: Int, milestones: [MilestoneInput!], name: String!, startDate: String!): ThesisPeriod!
+  deleteThesisPeriod(id: String!): Boolean!
+  updateThesisPeriod(academicYear: String, endDate: String, id: String!, maxGroupSize: Int, milestones: [MilestoneInput!], name: String, startDate: String, status: String): ThesisPeriod!
+}
+
+type PeriodMilestone {
+  description: String
+  endDate: String
+  id: String!
+  name: String!
+  startDate: String!
+  type: String!
 }
 
 type Query {
-  user(id: String!): User
-  users: [User!]!
+  thesisPeriod(id: String!): ThesisPeriod
+  thesisPeriods: [ThesisPeriod!]!
 }
 
-type User {
-  created_at: String!
-  email: String!
+type ThesisPeriod {
+  academicYear: String!
+  createdAt: String!
+  endDate: String!
   id: ID!
+  maxGroupSize: Int!
+  milestones: [PeriodMilestone]
   name: String!
+  startDate: String!
+  status: String!
 }

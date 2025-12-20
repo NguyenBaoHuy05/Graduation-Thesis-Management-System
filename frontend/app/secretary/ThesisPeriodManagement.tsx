@@ -17,8 +17,121 @@ import {
   ThesisPeriod,
   PeriodMilestone,
 } from "../../data/mockData";
+import { gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
+
+const GET_THESIS_PERIODS = gql`
+  query GetThesisPeriods {
+    thesisPeriods {
+      id
+      name
+      academicYear
+      startDate
+      endDate
+      status
+      maxGroupSize
+      milestones {
+        id
+        name
+        startDate
+        endDate
+        type
+        description
+      }
+    }
+  }
+`;
+
+const CREATE_THESIS_PERIOD = gql`
+  mutation CreateThesisPeriod(
+    $name: String!
+    $academicYear: String!
+    $startDate: String!
+    $endDate: String!
+    $maxGroupSize: Int
+    $milestones: [MilestoneInput!]
+  ) {
+    createThesisPeriod(
+      name: $name
+      academicYear: $academicYear
+      startDate: $startDate
+      endDate: $endDate
+      maxGroupSize: $maxGroupSize
+      milestones: $milestones
+    ) {
+      id
+      name
+      academicYear
+      startDate
+      endDate
+      status
+      maxGroupSize
+      milestones {
+        id
+        name
+        startDate
+        endDate
+        type
+        description
+      }
+    }
+  }
+`;
+
+const UPDATE_THESIS_PERIOD = gql`
+  mutation UpdateThesisPeriod(
+    $id: String!
+    $name: String
+    $academicYear: String
+    $startDate: String
+    $endDate: String
+    $status: String
+    $maxGroupSize: Int
+    $milestones: [MilestoneInput!]
+  ) {
+    updateThesisPeriod(
+      id: $id
+      name: $name
+      academicYear: $academicYear
+      startDate: $startDate
+      endDate: $endDate
+      status: $status
+      maxGroupSize: $maxGroupSize
+      milestones: $milestones
+    ) {
+      id
+      name
+      academicYear
+      startDate
+      endDate
+      status
+      maxGroupSize
+      milestones {
+        id
+        name
+        startDate
+        endDate
+        type
+        description
+      }
+    }
+  }
+`;
+
+const DELETE_THESIS_PERIOD = gql`
+  mutation DeleteThesisPeriod($id: String!) {
+    deleteThesisPeriod(id: $id)
+  }
+`;
 
 export default function ThesisPeriodManagement() {
+  const { data, loading, error, refetch } = useQuery<{
+    thesisPeriods: ThesisPeriod[];
+  }>(GET_THESIS_PERIODS);
+  const [createThesisPeriod] = useMutation(CREATE_THESIS_PERIOD);
+  const [updateThesisPeriod] = useMutation(UPDATE_THESIS_PERIOD);
+  const [deleteThesisPeriod] = useMutation(DELETE_THESIS_PERIOD);
+
   const [periods, setPeriods] = useState<ThesisPeriod[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPeriod, setEditingPeriod] = useState<ThesisPeriod | null>(null);
@@ -34,9 +147,11 @@ export default function ThesisPeriodManagement() {
   });
 
   useEffect(() => {
-    // Load initial data
-    setPeriods(mockThesisPeriods);
-  }, []);
+    console.log(data?.thesisPeriods);
+    if (data?.thesisPeriods) {
+      setPeriods(data.thesisPeriods);
+    }
+  }, [data]);
 
   const handleOpenModal = (period?: ThesisPeriod) => {
     if (period) {
@@ -61,36 +176,61 @@ export default function ThesisPeriodManagement() {
     setEditingPeriod(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.startDate || !formData.endDate) {
       alert("Vui lòng điền đầy đủ các trường bắt buộc!");
       return;
     }
 
-    if (editingPeriod) {
-      // Update
-      setPeriods((prev) =>
-        prev.map((p) =>
-          p.id === editingPeriod.id
-            ? ({ ...formData, id: p.id } as ThesisPeriod)
-            : p
-        )
-      );
-    } else {
-      // Create
-      const newPeriod: ThesisPeriod = {
-        ...(formData as ThesisPeriod),
-        id: `per${Date.now()}`,
-        milestones: formData.milestones || [],
-      };
-      setPeriods((prev) => [newPeriod, ...prev]);
+    const milestonesPayload = formData.milestones?.map(
+      ({ __typename, ...m }: any) => m
+    );
+
+    try {
+      if (editingPeriod) {
+        // Update
+        await updateThesisPeriod({
+          variables: {
+            id: editingPeriod.id,
+            name: formData.name,
+            academicYear: formData.academicYear,
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            status: formData.status,
+            maxGroupSize: formData.maxGroupSize,
+            milestones: milestonesPayload,
+          },
+        });
+      } else {
+        // Create
+        await createThesisPeriod({
+          variables: {
+            name: formData.name,
+            academicYear: formData.academicYear,
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            maxGroupSize: formData.maxGroupSize,
+            milestones: milestonesPayload,
+          },
+        });
+      }
+      await refetch(); // Refresh list
+      handleCloseModal();
+    } catch (e) {
+      console.error("Error saving thesis period:", e);
+      alert("Có lỗi xảy ra khi lưu!");
     }
-    handleCloseModal();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Bạn có chắc chắn muốn xóa kỳ này không?")) {
-      setPeriods((prev) => prev.filter((p) => p.id !== id));
+      try {
+        await deleteThesisPeriod({ variables: { id } });
+        await refetch();
+      } catch (e) {
+        console.error("Error deleting thesis period:", e);
+        alert("Có lỗi xảy ra khi xóa!");
+      }
     }
   };
 
@@ -102,10 +242,10 @@ export default function ThesisPeriodManagement() {
       startDate: "",
       type: "other",
     };
-    setFormData({
-      ...formData,
-      milestones: [...(formData.milestones || []), newMilestone],
-    });
+    setFormData((prev) => ({
+      ...prev,
+      milestones: [...(prev.milestones || []), newMilestone],
+    }));
   };
 
   const updateMilestone = (
@@ -113,15 +253,22 @@ export default function ThesisPeriodManagement() {
     field: keyof PeriodMilestone,
     value: any
   ) => {
-    const updatedMilestones = [...(formData.milestones || [])];
-    updatedMilestones[index] = { ...updatedMilestones[index], [field]: value };
-    setFormData({ ...formData, milestones: updatedMilestones });
+    setFormData((prev) => {
+      const updatedMilestones = [...(prev.milestones || [])];
+      updatedMilestones[index] = {
+        ...updatedMilestones[index],
+        [field]: value,
+      };
+      return { ...prev, milestones: updatedMilestones };
+    });
   };
 
   const removeMilestone = (index: number) => {
-    const updatedMilestones = [...(formData.milestones || [])];
-    updatedMilestones.splice(index, 1);
-    setFormData({ ...formData, milestones: updatedMilestones });
+    setFormData((prev) => {
+      const updatedMilestones = [...(prev.milestones || [])];
+      updatedMilestones.splice(index, 1);
+      return { ...prev, milestones: updatedMilestones };
+    });
   };
 
   return (
