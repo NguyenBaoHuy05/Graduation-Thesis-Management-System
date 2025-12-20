@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Lock, User } from "lucide-react";
+import Link from "next/link";
 import Image from "next/image";
 
 const role = ["Sinh viên", "Giảng viên", "Nhân viên"];
@@ -49,14 +50,17 @@ const Login: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden w-[400px] mx-2">
           <div className="bg-linear-to-r from-blue-600 to-blue-700 px-10 py-10 text-white">
             <div className="flex items-center justify-center mb-4">
-              <div className="bg-white backdrop-blur-sm p-4 rounded-full">
+              <Link
+                href="/"
+                className="bg-white backdrop-blur-sm p-4 rounded-full"
+              >
                 <Image
                   src="/LOGO_FIT_2.png"
                   alt="Logo"
                   width={48}
                   height={48}
                 />
-              </div>
+              </Link>
             </div>
             <h1 className="text-3xl font-bold text-center mb-2">
               Quản lý Khóa luận
