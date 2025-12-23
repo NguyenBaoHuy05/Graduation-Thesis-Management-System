@@ -7,6 +7,8 @@ import {
   mockTopics,
   mockThesisPeriods,
 } from "../../data/mockData";
+import { useQuery, useMutation } from "@apollo/client/react";
+import { gql } from "@apollo/client";
 import {
   Search,
   Calendar,
@@ -19,12 +21,61 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+// --- GraphQL Operations ---
+const GET_DATA = gql`
+  query GetData {
+    councils {
+      id
+      name
+      presidentId
+      secretaryId
+      reviewerId
+      memberIds
+      topicIds
+      status
+      description
+      date
+      time
+      room
+    }
+    teachers {
+      id
+      name
+      code
+    }
+  }
+`;
+
+const UPDATE_COUNCIL = gql`
+  mutation UpdateCouncil($input: UpdateCouncilInput!) {
+    updateCouncil(updateCouncilInput: $input) {
+      id
+      date
+      time
+      room
+      status
+    }
+  }
+`;
+
 const DefenseScheduling: React.FC = () => {
-  const [councils, setCouncils] = useState<DefenseCouncil[]>([]);
+  // Queries
+  const { data, loading, error, refetch } = useQuery<any>(GET_DATA, {
+    fetchPolicy: "network-only",
+  });
+  const councils = data?.councils || [];
+  const teachers = data?.teachers || [];
+
+  // Mutations
+  const [updateCouncil] = useMutation(UPDATE_COUNCIL, {
+    onCompleted: () => {
+      refetch();
+    },
+    onError: (err) => alert("Lỗi: " + err.message),
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCouncil, setSelectedCouncil] = useState<DefenseCouncil | null>(
-    null
-  );
+  const [selectedCouncil, setSelectedCouncil] = useState<any | null>(null);
 
   const [scheduleData, setScheduleData] = useState({
     date: "",
@@ -32,12 +83,9 @@ const DefenseScheduling: React.FC = () => {
     room: "",
   });
 
-  // Load data
-  useEffect(() => {
-    setCouncils([...mockCouncils]);
-  }, []);
+  // Load data (removed mock effect)
 
-  const openScheduleModal = (council: DefenseCouncil) => {
+  const openScheduleModal = (council: any) => {
     setSelectedCouncil(council);
     setScheduleData({
       date: council.date || "",
@@ -104,23 +152,23 @@ const DefenseScheduling: React.FC = () => {
       }
     }
 
-    const updated = councils.map((c) =>
-      c.id === selectedCouncil.id
-        ? {
-            ...c,
-            date: scheduleData.date,
-            time: scheduleData.time,
-            room: scheduleData.room,
-          }
-        : c
-    );
-    setCouncils(updated);
-    alert("Cập nhật lịch bảo vệ thành công!");
-    closeModal();
+    updateCouncil({
+      variables: {
+        input: {
+          id: selectedCouncil.id,
+          date: scheduleData.date,
+          time: scheduleData.time,
+          room: scheduleData.room,
+        },
+      },
+    }).then(() => {
+      alert("Cập nhật lịch bảo vệ thành công!");
+      closeModal();
+    });
   };
 
   const handlePublish = (id: string) => {
-    const council = councils.find((c) => c.id === id);
+    const council = councils.find((c: any) => c.id === id);
     if (!council?.date || !council?.time || !council?.room) {
       alert("Vui lòng xếp lịch (Ngày, Giờ, Phòng) trước khi công bố!");
       return;
@@ -131,24 +179,33 @@ const DefenseScheduling: React.FC = () => {
         "Bạn có chắc chắn muốn công bố lịch bảo vệ này? Giảng viên và sinh viên sẽ nhận được thông báo."
       )
     ) {
-      setCouncils(
-        councils.map((c) => (c.id === id ? { ...c, status: "published" } : c))
-      );
-      alert("Đã công bố lịch bảo vệ!");
+      updateCouncil({
+        variables: {
+          input: {
+            id: id,
+            status: "published",
+          },
+        },
+      }).then(() => alert("Đã công bố lịch bảo vệ!"));
     }
   };
 
   const handleUnpublish = (id: string) => {
     if (confirm("Bạn muốn gỡ bỏ lịch bảo vệ này về trạng thái Nháp?")) {
-      setCouncils(
-        councils.map((c) => (c.id === id ? { ...c, status: "draft" } : c))
-      );
+      updateCouncil({
+        variables: {
+          input: {
+            id: id,
+            status: "draft",
+          },
+        },
+      });
     }
   };
 
   const getTeacherName = (id?: string) => {
     if (!id) return "-";
-    return mockTeachers.find((t) => t.id === id)?.name || "Unknown";
+    return teachers.find((t: any) => t.id === id)?.name || "Unknown";
   };
 
   return (
@@ -161,7 +218,7 @@ const DefenseScheduling: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {councils.map((council) => (
+        {councils.map((council: any) => (
           <div
             key={council.id}
             className={`bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition ${
@@ -265,7 +322,9 @@ const DefenseScheduling: React.FC = () => {
                 <div className="mt-3 text-sm">
                   <span className="text-gray-500 block text-xs">Ủy viên</span>
                   <span className="font-medium">
-                    {council.memberIds.map((m) => getTeacherName(m)).join(", ")}
+                    {council.memberIds
+                      .map((m: any) => getTeacherName(m))
+                      .join(", ")}
                   </span>
                 </div>
               )}

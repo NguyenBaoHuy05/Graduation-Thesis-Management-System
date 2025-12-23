@@ -18,6 +18,7 @@ import {
   Upload,
 } from "lucide-react";
 import Image from "next/image";
+import DefenseRegistration from "./DefenseRegistration";
 import ThesisRegistration from "./ThesisRegistration";
 import OutlineSubmission from "./OutlineSubmission";
 import ThesisProgress from "./ThesisProgress";
@@ -28,7 +29,8 @@ import NotificationList from "./NotificationList";
 type TabType =
   | "registration"
   | "outline"
-  | "submission" // Added submission
+  | "submission"
+  | "defense"
   | "progress"
   | "complaint"
   | "notification";
@@ -39,7 +41,6 @@ const StudentDashboard: React.FC = () => {
   const student = profile as Student;
   const [activeTab, setActiveTab] = useState<TabType>("registration");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   const tabs = [
     {
       id: "registration" as TabType,
@@ -47,9 +48,10 @@ const StudentDashboard: React.FC = () => {
       icon: BookOpen,
     },
     { id: "outline" as TabType, name: "Nộp đề cương", icon: FileText },
-    { id: "submission" as TabType, name: "Nộp khóa luận", icon: Upload }, // Added new tab item
+    { id: "submission" as TabType, name: "Nộp khóa luận", icon: Upload },
+    { id: "defense" as TabType, name: "Đăng ký bảo vệ", icon: Shield },
     { id: "progress" as TabType, name: "Theo dõi tiến độ", icon: TrendingUp },
-    { id: "complaint" as TabType, name: "Khiếu nại", icon: Shield },
+    // { id: "complaint" as TabType, name: "Khiếu nại", icon: Shield },
     { id: "notification" as TabType, name: "Thông báo", icon: Bell },
   ];
 
@@ -57,10 +59,12 @@ const StudentDashboard: React.FC = () => {
     switch (activeTab) {
       case "outline":
         return <OutlineSubmission />;
-      case "submission": // Added new case
+      case "submission":
         return <ThesisSubmission />;
+      case "defense":
+        return <DefenseRegistration />;
       case "progress":
-        return <ThesisProgress />;
+        return <ThesisProgress />; // ...
       case "complaint":
         return <ComplaintForm />;
       case "notification":

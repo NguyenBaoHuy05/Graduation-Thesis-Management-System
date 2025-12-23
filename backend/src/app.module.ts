@@ -19,6 +19,7 @@ import { FormTemplatesModule } from './formTemplates/formTemplates.module';
 import { StudentsModule } from './students/students.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { CouncilsModule } from './councils/councils.module';
 
 /**
  * AppModule
@@ -60,6 +61,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     StudentsModule,
     TeachersModule,
     NotificationsModule,
+    CouncilsModule,
   ],
 
   // // Controllers: nơi định nghĩa các route HTTP (nếu có). Ở đây `AppController`
