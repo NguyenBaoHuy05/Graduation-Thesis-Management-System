@@ -516,7 +516,7 @@ const TopicManagement: React.FC = () => {
 
       {/* Confirmation Modal */}
       {isConfirmModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center">
             <div
               className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${

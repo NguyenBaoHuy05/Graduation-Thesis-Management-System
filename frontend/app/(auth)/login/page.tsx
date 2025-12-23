@@ -44,9 +44,9 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-blue-50 items-center justify-center lg:grid grid-cols-10 gap-2">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-blue-50 items-center justify-center lg:grid grid-cols-11 gap-2">
       <div className="hidden md:block col-span-7 bg-[url(/51.jpg)] bg-cover bg-center w-full h-full"></div>
-      <div className="col-span-3 w-full h-screen flex items-center justify-center lg:bg-none lg:bg-white/70 lg:backdrop-blur-sm lg:py-10 lg:px-4 bg-[url(/51.jpg)] bg-cover bg-center backdrop-blur-0">
+      <div className="col-span-4 w-full h-screen flex items-center justify-center lg:bg-none lg:bg-white/50 lg:backdrop-blur-sm lg:py-10 lg:px-4 bg-[url(/51.jpg)] bg-cover bg-center backdrop-blur-0">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden w-[400px] mx-2">
           <div className="bg-linear-to-r from-blue-600 to-blue-700 px-10 py-10 text-white">
             <div className="flex items-center justify-center mb-4">

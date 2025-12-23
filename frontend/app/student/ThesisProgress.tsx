@@ -31,6 +31,7 @@ const ThesisProgress: React.FC = () => {
     title: "",
     content: "",
     planNext: "",
+    fileLink: "",
   });
   // Local state to simulate adding new reports
   const [reports, setReports] = useState<ProgressReport[]>([]);
@@ -81,12 +82,13 @@ const ThesisProgress: React.FC = () => {
       title: reportData.title,
       content: reportData.content,
       planNext: reportData.planNext,
+      fileUrl: reportData.fileLink, // Added fileUrl
       submittedAt: new Date().toISOString().split("T")[0],
       status: "pending",
     };
 
     setReports([newReport, ...reports]);
-    setReportData({ title: "", content: "", planNext: "" });
+    setReportData({ title: "", content: "", planNext: "", fileLink: "" });
     setShowReportForm(false);
     alert("Nộp báo cáo tiến độ thành công!");
   };
@@ -218,6 +220,31 @@ const ThesisProgress: React.FC = () => {
                     }
                   />
                 </div>
+
+                {/* New File Link Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Link tài liệu minh chứng (nếu có)
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <LinkIcon size={16} className="text-gray-400" />
+                    </div>
+                    <input
+                      type="url"
+                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
+                      placeholder="https://drive.google.com/..."
+                      value={reportData.fileLink}
+                      onChange={(e) =>
+                        setReportData({
+                          ...reportData,
+                          fileLink: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
                 <div className="flex justify-end pt-2">
                   <button
                     type="submit"
@@ -273,6 +300,19 @@ const ThesisProgress: React.FC = () => {
                       </span>{" "}
                       {report.planNext}
                     </p>
+                    {report.fileUrl && (
+                      <p className="flex items-center gap-1 text-blue-600">
+                        <LinkIcon size={14} />
+                        <a
+                          href={report.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:underline"
+                        >
+                          Xem tài liệu đính kèm
+                        </a>
+                      </p>
+                    )}
                   </div>
                   {report.feedback && (
                     <div className="mt-3 bg-gray-50 p-2 rounded text-sm text-gray-600">

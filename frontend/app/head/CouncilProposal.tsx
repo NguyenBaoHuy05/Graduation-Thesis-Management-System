@@ -8,6 +8,8 @@ import {
   mockThesisPeriods,
   mockStudents,
 } from "../../data/mockData";
+import { useQuery, useMutation } from "@apollo/client/react";
+import { gql } from "@apollo/client";
 import {
   Plus,
   Search,
@@ -22,36 +24,125 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+// --- GraphQL Queries & Mutations ---
+const GET_DATA = gql`
+  query GetData {
+    councils {
+      id
+      name
+      presidentId
+      secretaryId
+      reviewerId
+      memberIds
+      topicIds
+      status
+      description
+      date
+      time
+      room
+    }
+    teachers {
+      id
+      name
+      code
+    }
+    topics {
+      id
+      title
+      status
+    }
+  }
+`;
+
+const CREATE_COUNCIL = gql`
+  mutation CreateCouncil($input: CreateCouncilInput!) {
+    createCouncil(createCouncilInput: $input) {
+      id
+    }
+  }
+`;
+
+const UPDATE_COUNCIL = gql`
+  mutation UpdateCouncil($input: UpdateCouncilInput!) {
+    updateCouncil(updateCouncilInput: $input) {
+      id
+    }
+  }
+`;
+
+const DELETE_COUNCIL = gql`
+  mutation DeleteCouncil($id: ID!) {
+    deleteCouncil(id: $id) {
+      id
+    }
+  }
+`;
+
 const CouncilProposal: React.FC = () => {
-  const [councils, setCouncils] = useState<DefenseCouncil[]>([]);
+  // --- State & Hooks ---
+  const { data, loading, error, refetch } = useQuery<any>(GET_DATA, {
+    fetchPolicy: "network-only",
+  });
+
+  const [createCouncil] = useMutation(CREATE_COUNCIL, {
+    onCompleted: () => {
+      alert("Tạo đề xuất hội đồng thành công!");
+      refetch();
+      closeModal();
+    },
+    onError: (err) => alert("Lỗi khi tạo hội đồng: " + err.message),
+  });
+
+  const [updateCouncil] = useMutation(UPDATE_COUNCIL, {
+    onCompleted: () => {
+      alert("Cập nhật đề xuất hội đồng thành công!");
+      refetch();
+      closeModal();
+    },
+    onError: (err) => alert("Lỗi khi cập nhật hội đồng: " + err.message),
+  });
+
+  const [deleteCouncil] = useMutation(DELETE_COUNCIL, {
+    onCompleted: () => {
+      alert("Đã xóa đề xuất hội đồng thành công!");
+      refetch();
+    },
+    onError: (err) => alert("Lỗi khi xóa: " + err.message),
+  });
+
+  const councils = data?.councils || [];
+  const teachers = data?.teachers || [];
+  const topics = data?.topics || [];
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCouncil, setSelectedCouncil] = useState<DefenseCouncil | null>(
-    null
-  );
+  const [selectedCouncil, setSelectedCouncil] = useState<any | null>(null);
 
-  const initialFormState: Partial<DefenseCouncil> = {
+  const initialFormState = {
     name: "",
     presidentId: "",
     secretaryId: "",
-    memberIds: [],
+    memberIds: [] as string[],
     reviewerId: "",
-    topicIds: [],
+    topicIds: [] as string[],
     status: "draft",
     description: "",
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  // Load data
-  useEffect(() => {
-    // In real app, filter by Head's dept or just all
-    setCouncils([...mockCouncils]);
-  }, []);
-
-  const openModal = (council?: DefenseCouncil) => {
+  const openModal = (council?: any) => {
     if (council) {
       setSelectedCouncil(council);
-      setFormData(council);
+      setFormData({
+        name: council.name,
+        presidentId: council.presidentId,
+        secretaryId: council.secretaryId,
+        memberIds: council.memberIds || [],
+        reviewerId: council.reviewerId,
+        topicIds: council.topicIds || [],
+        status: council.status,
+        description: council.description || "",
+      });
     } else {
       setSelectedCouncil(null);
       setFormData(initialFormState);
@@ -85,43 +176,38 @@ const CouncilProposal: React.FC = () => {
 
     if (selectedCouncil) {
       // Update
-      const updated = councils.map((c) =>
-        c.id === selectedCouncil.id
-          ? ({ ...c, ...formData } as DefenseCouncil)
-          : c
-      );
-      setCouncils(updated);
-      alert("Cập nhật đề xuất hội đồng thành công!");
+      updateCouncil({
+        variables: {
+          input: {
+            id: selectedCouncil.id,
+            ...formData,
+          },
+        },
+      });
     } else {
       // Create
-      const newCouncil: DefenseCouncil = {
-        id: `dc${Date.now()}`,
-        name: formData.name!,
-        presidentId: formData.presidentId!,
-        secretaryId: formData.secretaryId!,
-        memberIds: formData.memberIds || [],
-        reviewerId: formData.reviewerId!,
-        periodId: mockThesisPeriods[0].id,
-        topicIds: formData.topicIds || [],
-        status: "draft", // Always draft for proposal
-        description: formData.description || "",
-      };
-      setCouncils([newCouncil, ...councils]);
-      alert("Tạo đề xuất hội đồng mới thành công!");
+      createCouncil({
+        variables: {
+          input: {
+            ...formData,
+            periodId: "tp001", // TODO: Get active period dynamically or from selection
+            status: "draft",
+          },
+        },
+      });
     }
-    closeModal();
   };
 
   const handleDelete = (id: string) => {
     if (confirm("Bạn có chắc chắn muốn xóa đề xuất này không?")) {
-      setCouncils(councils.filter((c) => c.id !== id));
+      deleteCouncil({ variables: { id } });
     }
   };
 
   // Helper to get teacher name
   const getTeacherName = (id?: string) => {
     if (!id) return "-";
-    return mockTeachers.find((t) => t.id === id)?.name || "Unknown";
+    return teachers.find((t: any) => t.id === id)?.name || "Unknown";
   };
 
   return (
@@ -143,7 +229,7 @@ const CouncilProposal: React.FC = () => {
 
       {/* List */}
       <div className="grid grid-cols-1 gap-6">
-        {councils.map((council) => (
+        {councils.map((council: any) => (
           <div
             key={council.id}
             className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition"
@@ -229,7 +315,7 @@ const CouncilProposal: React.FC = () => {
                       {getTeacherName(council.reviewerId)}
                     </span>
                   </li>
-                  {council.memberIds.map((mid, idx) => (
+                  {council.memberIds.map((mid: any, idx: number) => (
                     <li key={mid} className="flex justify-between">
                       <span className="text-gray-500">Ủy viên {idx + 1}:</span>
                       <span className="font-medium">{getTeacherName(mid)}</span>
@@ -246,7 +332,7 @@ const CouncilProposal: React.FC = () => {
                 </h4>
                 {council.topicIds.length > 0 ? (
                   <ul className="space-y-2 text-sm list-disc list-inside text-gray-700">
-                    {council.topicIds.map((tid) => {
+                    {council.topicIds.map((tid: any) => {
                       const topic = mockTopics.find((t) => t.id === tid);
                       return (
                         <li
@@ -343,7 +429,7 @@ const CouncilProposal: React.FC = () => {
                       }
                     >
                       <option value="">-- Chọn Chủ tịch --</option>
-                      {mockTeachers.map((t) => (
+                      {teachers.map((t: any) => (
                         <option key={t.id} value={t.id}>
                           {t.name} ({t.code})
                         </option>
@@ -366,7 +452,7 @@ const CouncilProposal: React.FC = () => {
                       }
                     >
                       <option value="">-- Chọn Thư ký --</option>
-                      {mockTeachers.map((t) => (
+                      {teachers.map((t: any) => (
                         <option key={t.id} value={t.id}>
                           {t.name} ({t.code})
                         </option>
@@ -386,7 +472,7 @@ const CouncilProposal: React.FC = () => {
                       }
                     >
                       <option value="">-- Chọn Phản biện --</option>
-                      {mockTeachers.map((t) => (
+                      {teachers.map((t: any) => (
                         <option key={t.id} value={t.id}>
                           {t.name} ({t.code})
                         </option>
@@ -409,7 +495,7 @@ const CouncilProposal: React.FC = () => {
                         setFormData({ ...formData, memberIds: selected });
                       }}
                     >
-                      {mockTeachers.map((t) => (
+                      {teachers.map((t: any) => (
                         <option key={t.id} value={t.id}>
                           {t.name} ({t.code})
                         </option>
@@ -430,9 +516,9 @@ const CouncilProposal: React.FC = () => {
                   Chọn đề tài bảo vệ (Các đề tài đã được duyệt)
                 </label>
                 <div className="max-h-48 overflow-y-auto border rounded-lg p-2 space-y-2">
-                  {mockTopics
-                    .filter((t) => t.status === "approved")
-                    .map((topic) => (
+                  {topics
+                    .filter((t: any) => t.status === "approved")
+                    .map((topic: any) => (
                       <label
                         key={topic.id}
                         className="flex items-start gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"

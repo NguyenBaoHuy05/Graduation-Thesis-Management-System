@@ -943,6 +943,33 @@ export const mockTopics: Topic[] = [
   },
 ];
 
+export const mockThesisRegistrations: ThesisRegistration[] = [
+  {
+    id: "tr1",
+    studentId: "st1", // SV001
+    topicId: "tp1",
+    teacherId: "t1",
+    status: "in_progress",
+    registeredAt: "2025-08-20",
+  },
+  {
+    id: "tr2",
+    studentId: "st2", // SV002
+    topicId: "tp1",
+    teacherId: "t1",
+    status: "in_progress",
+    registeredAt: "2025-08-21",
+  },
+  {
+    id: "tr3",
+    studentId: "st3", // SV003
+    topicId: "tp2",
+    teacherId: "t2",
+    status: "in_progress",
+    registeredAt: "2025-08-22",
+  },
+];
+
 export const mockRegistrations: ThesisRegistration[] = [
   // Student 1 - Topic 1 (Started, In Progress)
   {
