@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { mockStudents, Student } from "../../data/mockData";
+import React, { useState } from "react";
+// import { mockStudents, Student } from "../../data/mockData";
+import { Student } from "../../data/mockData";
 import {
   Plus,
   Search,
@@ -15,10 +16,94 @@ import {
   GraduationCap,
   BookOpen,
 } from "lucide-react";
+import { useQuery, useMutation } from "@apollo/client/react";
+import { gql } from "@apollo/client";
+
+// --- GraphQL Operations ---
+const GET_STUDENTS = gql`
+  query GetStudents {
+    students {
+      id
+      code
+      name
+      email
+      phone
+      className
+      major
+      gpa
+      creditsAccumulated
+    }
+  }
+`;
+
+const CREATE_STUDENT = gql`
+  mutation CreateStudent(
+    $code: String!
+    $name: String!
+    $email: String!
+    $phone: String
+    $className: String
+    $major: String
+    $gpa: Float
+    $creditsAccumulated: Float
+  ) {
+    createStudent(
+      code: $code
+      name: $name
+      email: $email
+      phone: $phone
+      className: $className
+      major: $major
+      gpa: $gpa
+      creditsAccumulated: $creditsAccumulated
+    ) {
+      id
+      code
+      name
+      email
+    }
+  }
+`;
+
+const UPDATE_STUDENT = gql`
+  mutation UpdateStudent(
+    $id: String!
+    $code: String
+    $name: String
+    $email: String
+    $phone: String
+    $className: String
+    $major: String
+    $gpa: Float
+    $creditsAccumulated: Float
+  ) {
+    updateStudent(
+      id: $id
+      code: $code
+      name: $name
+      email: $email
+      phone: $phone
+      className: $className
+      major: $major
+      gpa: $gpa
+      creditsAccumulated: $creditsAccumulated
+    ) {
+      id
+      code
+      name
+      email
+    }
+  }
+`;
+
+const DELETE_STUDENT = gql`
+  mutation DeleteStudent($id: String!) {
+    deleteStudent(id: $id)
+  }
+`;
 
 const StudentManagement: React.FC = () => {
   // --- State ---
-  const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Modals state
@@ -33,7 +118,7 @@ const StudentManagement: React.FC = () => {
   const initialFormState: Partial<Student> = {
     code: "",
     name: "",
-    class: "",
+    class: "", // Maps to className
     major: "",
     email: "",
     phone: "",
@@ -42,10 +127,46 @@ const StudentManagement: React.FC = () => {
   };
   const [formData, setFormData] = useState<Partial<Student>>(initialFormState);
 
-  // Load data on mount
-  useEffect(() => {
-    setStudents([...mockStudents]);
-  }, []);
+  // --- Apollo Hooks ---
+  const { data, loading, error, refetch } = useQuery<{ students: Student[] }>(
+    GET_STUDENTS
+  );
+  console.log(data);
+  const [createStudent] = useMutation(CREATE_STUDENT, {
+    onCompleted: () => {
+      refetch();
+      setIsAddModalOpen(false);
+      resetForm();
+      alert("Thêm sinh viên thành công!");
+    },
+    onError: (err) => alert("Lỗi khi thêm: " + err.message),
+  });
+
+  const [updateStudent] = useMutation(UPDATE_STUDENT, {
+    onCompleted: () => {
+      refetch();
+      setIsEditModalOpen(false);
+      resetForm();
+      alert("Cập nhật thông tin sinh viên thành công!");
+    },
+    onError: (err) => alert("Lỗi khi cập nhật: " + err.message),
+  });
+
+  const [deleteStudent] = useMutation(DELETE_STUDENT, {
+    onCompleted: () => {
+      refetch();
+      setIsDeleteModalOpen(false);
+      setSelectedStudent(null);
+      alert("Xóa sinh viên thành công!");
+    },
+    onError: (err) => alert("Lỗi khi xóa: " + err.message),
+  });
+
+  const students =
+    data?.students.map((s: Student) => ({
+      ...s,
+      class: s.className || "", // Map className to class for frontend compatibility if needed, or update frontend to use className
+    })) || [];
 
   // --- Handlers ---
 
@@ -68,22 +189,27 @@ const StudentManagement: React.FC = () => {
   // Create
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    const newId = `st${Date.now()}`;
-    const newStudent: Student = {
-      ...(formData as Student),
-      id: newId,
-    };
-
-    setStudents([...students, newStudent]);
-    setIsAddModalOpen(false);
-    resetForm();
-    alert("Thêm sinh viên thành công!");
+    createStudent({
+      variables: {
+        code: formData.code,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        className: formData.class, // Map 'class' from form to 'className' in GraphQL
+        major: formData.major,
+        gpa: formData.gpa,
+        creditsAccumulated: formData.creditsAccumulated,
+      },
+    });
   };
 
   // Update
   const openEditModal = (student: Student) => {
     setSelectedStudent(student);
-    setFormData(student);
+    setFormData({
+      ...student,
+      class: student.className || student.class, // Handle both potential field names
+    });
     setIsEditModalOpen(true);
   };
 
@@ -91,14 +217,19 @@ const StudentManagement: React.FC = () => {
     e.preventDefault();
     if (!selectedStudent) return;
 
-    const updatedStudents = students.map((s) =>
-      s.id === selectedStudent.id ? { ...s, ...formData } : s
-    );
-
-    setStudents(updatedStudents as Student[]);
-    setIsEditModalOpen(false);
-    resetForm();
-    alert("Cập nhật thông tin sinh viên thành công!");
+    updateStudent({
+      variables: {
+        id: selectedStudent.id,
+        code: formData.code,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        className: formData.class,
+        major: formData.major,
+        gpa: formData.gpa,
+        creditsAccumulated: formData.creditsAccumulated,
+      },
+    });
   };
 
   // Delete
@@ -109,13 +240,9 @@ const StudentManagement: React.FC = () => {
 
   const handleDelete = () => {
     if (!selectedStudent) return;
-
-    // Optional: Check conditions if needed (e.g., student has active thesis)
-    const filtered = students.filter((s) => s.id !== selectedStudent.id);
-    setStudents(filtered);
-    setIsDeleteModalOpen(false);
-    setSelectedStudent(null);
-    alert("Xóa sinh viên thành công!");
+    deleteStudent({
+      variables: { id: selectedStudent.id },
+    });
   };
 
   // Filter
@@ -123,8 +250,14 @@ const StudentManagement: React.FC = () => {
     (s) =>
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.class.toLowerCase().includes(searchTerm.toLowerCase())
+      (s.class || s.className || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
   );
+
+  if (loading) return <div className="p-6">Đang tải danh sách...</div>;
+  if (error)
+    return <div className="p-6 text-red-500">Lỗi: {error.message}</div>;
 
   return (
     <div className="space-y-6 p-6">
@@ -212,7 +345,7 @@ const StudentManagement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">
-                        {student.class}
+                        {student.class || student.className}
                       </div>
                       <div className="text-xs text-gray-500">
                         {student.major}

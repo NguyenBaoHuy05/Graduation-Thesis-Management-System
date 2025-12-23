@@ -6,11 +6,7 @@ import { useQuery } from "@apollo/client/react";
 import Navbar from "@/components/Navbar";
 import Header from "@/components/Header";
 import TimelineSection from "@/components/TimelineSection";
-import {
-  mockNotifications,
-  Notification,
-  ThesisPeriod,
-} from "../data/mockData";
+import { ThesisPeriod } from "../data/mockData";
 import { Globe, Book, Users, FileText, Bell } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext"; // Added import
@@ -73,21 +69,45 @@ export default function Home() {
     // { title: "Công tác SV", active: false, hasSub: true },
   ];
 
-  const [displayNotifications, setDisplayNotifications] = useState<
-    Notification[]
-  >([]);
+  // --- Notifications Fetching ---
+  const GET_HOME_NOTIFICATIONS = gql`
+    query GetHomeNotifications {
+      notifications {
+        id
+        title
+        content
+        date
+        type
+        isRead
+      }
+    }
+  `;
+
+  const { data: notifData } = useQuery<{ notifications: any[] }>(
+    GET_HOME_NOTIFICATIONS,
+    {
+      fetchPolicy: "network-only",
+    }
+  );
+
+  const [displayNotifications, setDisplayNotifications] = useState<any[]>([]);
 
   useEffect(() => {
-    // Filter only public notifications
-    const visible = mockNotifications.filter((n) => n.type === "public");
+    if (notifData?.notifications) {
+      // Filter only public notifications
+      const visible = notifData.notifications.filter(
+        (n: any) => n.type === "public"
+      );
 
-    // Sort by date desc
-    visible.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+      // Sort by date desc
+      visible.sort(
+        (a: any, b: any) =>
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
 
-    setDisplayNotifications(visible);
-  }, [user]);
+      setDisplayNotifications(visible);
+    }
+  }, [notifData]);
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-800">

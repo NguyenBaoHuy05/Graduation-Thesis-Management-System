@@ -1,15 +1,124 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { mockNotifications, Notification } from "../../data/mockData";
+// import { mockNotifications, Notification } from "../../data/mockData"; // Removed mock data
 import { Plus, Search, Edit, Trash2, X, Bell, Globe, Lock } from "lucide-react";
+import { useQuery, useMutation } from "@apollo/client/react";
+import { gql } from "@apollo/client";
+
+// --- GraphQL Operations ---
+const GET_NOTIFICATIONS = gql`
+  query GetNotifications {
+    notifications {
+      id
+      title
+      content
+      date
+      type
+      isRead
+    }
+  }
+`;
+
+const CREATE_NOTIFICATION = gql`
+  mutation CreateNotification(
+    $title: String!
+    $content: String
+    $date: String
+    $type: String
+  ) {
+    createNotification(
+      title: $title
+      content: $content
+      date: $date
+      type: $type
+    ) {
+      id
+      title
+      content
+      date
+      type
+    }
+  }
+`;
+
+const UPDATE_NOTIFICATION = gql`
+  mutation UpdateNotification(
+    $id: ID!
+    $title: String
+    $content: String
+    $type: String
+  ) {
+    updateNotification(id: $id, title: $title, content: $content, type: $type) {
+      id
+      title
+      content
+      type
+    }
+  }
+`;
+
+const DELETE_NOTIFICATION = gql`
+  mutation DeleteNotification($id: ID!) {
+    deleteNotification(id: $id)
+  }
+`;
+
+// --- Types ---
+interface Notification {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  type: "public" | "internal";
+  isRead: boolean;
+}
 
 /**
  * Management Component for Secretaries to Create/Edit/Delete Notifications
  */
 const NotificationManagement: React.FC = () => {
   // --- State ---
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const { data, loading, error, refetch } = useQuery<{
+    notifications: Notification[];
+  }>(GET_NOTIFICATIONS, {
+    // Avoid caching issues during dev
+    fetchPolicy: "network-only",
+  });
+
+  const [createNotification] = useMutation(CREATE_NOTIFICATION, {
+    onCompleted: () => {
+      refetch();
+      alert("Tạo thông báo thành công!");
+    },
+    onError: (err) => {
+      console.error(err);
+      alert("Lỗi khi tạo thông báo: " + err.message);
+    },
+  });
+
+  const [updateNotification] = useMutation(UPDATE_NOTIFICATION, {
+    onCompleted: () => {
+      refetch();
+      alert("Cập nhật thông báo thành công!");
+    },
+    onError: (err) => {
+      console.error(err);
+      alert("Lỗi khi cập nhật thông báo: " + err.message);
+    },
+  });
+
+  const [deleteNotification] = useMutation(DELETE_NOTIFICATION, {
+    onCompleted: () => {
+      refetch();
+      alert("Xóa thông báo thành công!");
+    },
+    onError: (err) => {
+      console.error(err);
+      alert("Lỗi khi xóa thông báo: " + err.message);
+    },
+  });
+
   const [searchTerm, setSearchTerm] = useState("");
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -29,11 +138,6 @@ const NotificationManagement: React.FC = () => {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  // Load data
-  useEffect(() => {
-    setNotifications([...mockNotifications]);
-  }, []);
-
   // --- Handlers ---
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -52,20 +156,17 @@ const NotificationManagement: React.FC = () => {
   // Create
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    const newId = `n${Date.now()}`;
-    const newNotif: Notification = {
-      id: newId,
-      title: formData.title || "",
-      content: formData.content || "",
-      type: (formData.type as "public" | "internal") || "public",
-      date: new Date().toISOString().split("T")[0],
-      isRead: false,
-    };
-
-    setNotifications([newNotif, ...notifications]);
+    createNotification({
+      variables: {
+        title: formData.title,
+        content: formData.content,
+        // Send current date as YYYY-MM-DD
+        date: new Date().toISOString().split("T")[0],
+        type: formData.type,
+      },
+    });
     setIsAddModalOpen(false);
     resetForm();
-    alert("Tạo thông báo thành công!");
   };
 
   // Update
@@ -83,21 +184,16 @@ const NotificationManagement: React.FC = () => {
     e.preventDefault();
     if (!selectedNotif) return;
 
-    const updatedList = notifications.map((n) =>
-      n.id === selectedNotif.id
-        ? {
-            ...n,
-            title: formData.title || "",
-            content: formData.content || "",
-            type: (formData.type as "public" | "internal") || "public",
-          }
-        : n
-    );
-
-    setNotifications(updatedList);
+    updateNotification({
+      variables: {
+        id: selectedNotif.id,
+        title: formData.title,
+        content: formData.content,
+        type: formData.type,
+      },
+    });
     setIsEditModalOpen(false);
     resetForm();
-    alert("Cập nhật thông báo thành công!");
   };
 
   // Delete
@@ -108,17 +204,22 @@ const NotificationManagement: React.FC = () => {
 
   const handleDelete = () => {
     if (!selectedNotif) return;
-    const filtered = notifications.filter((n) => n.id !== selectedNotif.id);
-    setNotifications(filtered);
+    deleteNotification({
+      variables: { id: selectedNotif.id },
+    });
     setIsDeleteModalOpen(false);
     setSelectedNotif(null);
-    alert("Xóa thông báo thành công!");
   };
 
   // Filter
-  const filteredNotifs = notifications.filter((n) =>
+  const notifications = data?.notifications || [];
+  const filteredNotifs = notifications.filter((n: Notification) =>
     n.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) return <div className="p-6">Đang tải dữ liệu...</div>;
+  if (error)
+    return <div className="p-6 text-red-500">Lỗi: {error.message}</div>;
 
   return (
     <div className="space-y-6 p-6">
@@ -185,7 +286,7 @@ const NotificationManagement: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredNotifs.length > 0 ? (
-                filteredNotifs.map((notif) => (
+                filteredNotifs.map((notif: Notification) => (
                   <tr key={notif.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4 text-gray-400">
                       {notif.type === "public" ? (
@@ -214,7 +315,7 @@ const NotificationManagement: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {notif.date}
+                      {notif.date ? notif.date.split("T")[0] : ""}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end space-x-2">

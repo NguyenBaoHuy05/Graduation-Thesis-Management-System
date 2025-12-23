@@ -6,7 +6,7 @@ import { resolve } from 'path';
 dotenv.config({ path: resolve(__dirname, '../.env') });
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KY;
+const supabaseKey = process.env.SUPABASE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('Missing SUPABASE_URL or SUPABASE_KEY in .env');
@@ -61,6 +61,37 @@ const thesisPeriods = [
   },
 ];
 
+const notifications = [
+  {
+    id: '58f1c834-0d79-4d64-94ec-7c2275811c01',
+    title:
+      'Thông báo về việc đăng ký đề tài khóa luận tốt nghiệp kỳ 1 năm học 2025-2026',
+    content:
+      'Sinh viên lưu ý thời gian đăng ký đề tài từ ngày 15/08/2025 đến hết ngày 30/08/2025. Các đề tài phải được GVHD duyệt trước khi đăng ký lên hệ thống.',
+    date: '2025-08-01',
+    type: 'public',
+    is_read: false,
+  },
+  {
+    id: '58f1c834-0d79-4d64-94ec-7c2275811c02',
+    title: 'Hướng dẫn nộp đề cương chi tiết',
+    content:
+      'Sinh viên nộp đề cương chi tiết qua hệ thống trước ngày 15/09/2025. Mẫu đề cương có thể tải về tại mục Biểu mẫu.',
+    date: '2025-09-01',
+    type: 'internal',
+    is_read: false,
+  },
+  {
+    id: '58f1c834-0d79-4d64-94ec-7c2275811c03',
+    title: 'Lịch bảo vệ thử',
+    content:
+      'Lịch bảo vệ thử sẽ diễn ra vào tuần đầu tiên của tháng 12. Sinh viên theo dõi lịch chi tiết được cập nhật trên website khoa.',
+    date: '2025-11-20',
+    type: 'public',
+    is_read: false,
+  },
+];
+
 async function seed() {
   console.log('--- Debug Info ---');
   console.log('URL:', supabaseUrl);
@@ -78,16 +109,27 @@ async function seed() {
   console.log('Current row count:', count);
 
   console.log('Seeding thesis_periods...');
-  const { data, error } = await supabase
+  const { data: tpData, error: tpError } = await supabase
     .from('thesis_periods')
     .upsert(thesisPeriods, { onConflict: 'id' })
     .select();
 
-  if (error) {
-    console.error('Error seeding data:', error);
+  if (tpError) {
+    console.error('Error seeding thesis_periods:', tpError);
   } else {
-    console.log('Successfully seeded:', data?.length, 'rows');
-    console.log('Data:', data);
+    console.log('Successfully seeded thesis_periods:', tpData?.length, 'rows');
+  }
+
+  console.log('Seeding notifications...');
+  const { data: nData, error: nError } = await supabase
+    .from('notifications')
+    .upsert(notifications, { onConflict: 'id' })
+    .select();
+
+  if (nError) {
+    console.error('Error seeding notifications:', nError);
+  } else {
+    console.log('Successfully seeded notifications:', nData?.length, 'rows');
   }
 }
 

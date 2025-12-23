@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { mockForms, FormTemplate } from "../../data/mockData";
+import React, { useState } from "react";
+// import { mockForms, FormTemplate } from "../../data/mockData"; // Removed mock data
+import { FormTemplate } from "../../data/mockData"; // Keep interface if needed, or define locally. Assuming we use the one from mockData or generate types.
 import {
   Plus,
   Search,
@@ -13,10 +14,76 @@ import {
   Calendar,
   Link as LinkIcon,
 } from "lucide-react";
+import { useQuery, useMutation } from "@apollo/client/react";
+import { gql } from "@apollo/client";
+
+// --- GraphQL Operations ---
+const GET_FORM_TEMPLATES = gql`
+  query GetFormTemplates {
+    formTemplates {
+      id
+      name
+      description
+      fileUrl
+      type
+    }
+  }
+`;
+
+const CREATE_FORM_TEMPLATE = gql`
+  mutation CreateFormTemplate(
+    $name: String!
+    $description: String!
+    $fileUrl: String!
+    $type: String!
+  ) {
+    createFormTemplate(
+      name: $name
+      description: $description
+      fileUrl: $fileUrl
+      type: $type
+    ) {
+      id
+      name
+      description
+      fileUrl
+      type
+    }
+  }
+`;
+
+const UPDATE_FORM_TEMPLATE = gql`
+  mutation UpdateFormTemplate(
+    $id: String!
+    $name: String
+    $description: String
+    $fileUrl: String
+    $type: String
+  ) {
+    updateFormTemplate(
+      id: $id
+      name: $name
+      description: $description
+      fileUrl: $fileUrl
+      type: $type
+    ) {
+      id
+      name
+      description
+      fileUrl
+      type
+    }
+  }
+`;
+
+const DELETE_FORM_TEMPLATE = gql`
+  mutation DeleteFormTemplate($id: String!) {
+    deleteFormTemplate(id: $id)
+  }
+`;
 
 const FormManagement: React.FC = () => {
   // --- State ---
-  const [forms, setForms] = useState<FormTemplate[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -33,9 +100,42 @@ const FormManagement: React.FC = () => {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  useEffect(() => {
-    setForms([...mockForms]);
-  }, []);
+  // --- Apollo Hooks ---
+  const { data, loading, error, refetch } = useQuery<{
+    formTemplates: FormTemplate[];
+  }>(GET_FORM_TEMPLATES);
+
+  const [createFormTemplate] = useMutation(CREATE_FORM_TEMPLATE, {
+    onCompleted: () => {
+      refetch();
+      setIsAddModalOpen(false);
+      resetForm();
+      alert("Thêm biểu mẫu thành công!");
+    },
+    onError: (err) => alert("Lỗi khi thêm: " + err.message),
+  });
+
+  const [updateFormTemplate] = useMutation(UPDATE_FORM_TEMPLATE, {
+    onCompleted: () => {
+      refetch();
+      setIsEditModalOpen(false);
+      resetForm();
+      alert("Cập nhật biểu mẫu thành công!");
+    },
+    onError: (err) => alert("Lỗi khi cập nhật: " + err.message),
+  });
+
+  const [deleteFormTemplate] = useMutation(DELETE_FORM_TEMPLATE, {
+    onCompleted: () => {
+      refetch();
+      setIsDeleteModalOpen(false);
+      setSelectedForm(null);
+      alert("Xóa biểu mẫu thành công!");
+    },
+    onError: (err) => alert("Lỗi khi xóa: " + err.message),
+  });
+
+  const forms = data?.formTemplates || [];
 
   // --- Handlers ---
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,21 +151,14 @@ const FormManagement: React.FC = () => {
   // Create
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    const newId = `f${Date.now()}`;
-    const newForm: FormTemplate = {
-      id: newId,
-      name: formData.name,
-
-      fileUrl: formData.fileUrl,
-      description: formData.description || "Mô tả biểu mẫu",
-      uploadDate: new Date().toISOString().split("T")[0],
-      type: "other",
-    };
-
-    setForms([...forms, newForm]);
-    setIsAddModalOpen(false);
-    resetForm();
-    alert("Thêm biểu mẫu thành công!");
+    createFormTemplate({
+      variables: {
+        name: formData.name,
+        description: formData.description || "Mô tả biểu mẫu",
+        fileUrl: formData.fileUrl,
+        type: formData.type,
+      },
+    });
   };
 
   // Update
@@ -74,7 +167,7 @@ const FormManagement: React.FC = () => {
     setFormData({
       name: form.name,
       fileUrl: form.fileUrl,
-      description: form.description,
+      description: form.description || "",
       type: form.type,
     });
     setIsEditModalOpen(true);
@@ -84,20 +177,15 @@ const FormManagement: React.FC = () => {
     e.preventDefault();
     if (!selectedForm) return;
 
-    const updatedForms = forms.map((f) =>
-      f.id === selectedForm.id
-        ? {
-            ...f,
-            ...formData,
-            uploadDate: new Date().toISOString().split("T")[0],
-          }
-        : f
-    );
-
-    setForms(updatedForms);
-    setIsEditModalOpen(false);
-    resetForm();
-    alert("Cập nhật biểu mẫu thành công!");
+    updateFormTemplate({
+      variables: {
+        id: selectedForm.id,
+        name: formData.name,
+        description: formData.description,
+        fileUrl: formData.fileUrl,
+        type: formData.type,
+      },
+    });
   };
 
   // Delete
@@ -108,17 +196,19 @@ const FormManagement: React.FC = () => {
 
   const handleDelete = () => {
     if (!selectedForm) return;
-    const filtered = forms.filter((f) => f.id !== selectedForm.id);
-    setForms(filtered);
-    setIsDeleteModalOpen(false);
-    setSelectedForm(null);
-    alert("Xóa biểu mẫu thành công!");
+    deleteFormTemplate({
+      variables: { id: selectedForm.id },
+    });
   };
 
   // Filter
   const filteredForms = forms.filter((f) =>
     f.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) return <div className="p-6">Đang tải danh sách...</div>;
+  if (error)
+    return <div className="p-6 text-red-500">Lỗi: {error.message}</div>;
 
   return (
     <div className="space-y-6 p-6">
@@ -173,9 +263,9 @@ const FormManagement: React.FC = () => {
                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Liên kết / File
                 </th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                {/* <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Ngày cập nhật
-                </th>
+                </th> */}
                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">
                   Thao tác
                 </th>
@@ -198,6 +288,11 @@ const FormManagement: React.FC = () => {
                           {form.name}
                         </span>
                       </div>
+                      {form.description && (
+                        <p className="text-xs text-gray-400 mt-1 pl-8 truncate max-w-xs">
+                          {form.description}
+                        </p>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div
@@ -214,12 +309,14 @@ const FormManagement: React.FC = () => {
                         </a>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    {/* <td className="px-6 py-4">
                       <div className="flex items-center text-sm text-gray-500">
                         <Calendar size={14} className="mr-1.5" />
-                        {form.uploadDate}
+                        {form.createdAt
+                          ? new Date(form.createdAt).toLocaleDateString("vi-VN")
+                          : form.uploadDate}
                       </div>
-                    </td>
+                    </td> */}
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end space-x-2">
                         <a
@@ -290,10 +387,23 @@ const FormManagement: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mô tả
+                </label>
+                <input
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
+                  placeholder="Mô tả ngắn gọn"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Đường dẫn tải về (URL) <span className="text-red-500">*</span>
                 </label>
                 <input
                   required
+                  name="fileUrl"
                   value={formData.fileUrl}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
@@ -322,7 +432,7 @@ const FormManagement: React.FC = () => {
 
       {/* Edit Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-gray-900">Sửa biểu mẫu</h3>
@@ -339,6 +449,17 @@ const FormManagement: React.FC = () => {
                   required
                   name="name"
                   value={formData.name}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mô tả
+                </label>
+                <input
+                  name="description"
+                  value={formData.description}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
                 />
@@ -377,7 +498,7 @@ const FormManagement: React.FC = () => {
 
       {/* Delete Modal */}
       {isDeleteModalOpen && selectedForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 text-center">
             <h3 className="text-xl font-bold text-gray-900 mb-2">
               Xác nhận xóa?

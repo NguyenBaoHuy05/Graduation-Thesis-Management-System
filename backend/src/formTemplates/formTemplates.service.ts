@@ -1,48 +1,48 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { ThesisPeriod } from './formTemplates.entity';
+import { FormTemplate } from './formTemplates.entity';
 import {
-  rowToThesisPeriod,
-  rowsToThesisPeriods,
+  rowToFormTemplate,
+  rowsToFormTemplates,
 } from './formTemplates.transformer';
 import { Database } from '../types/database.types';
 
-type ThesisPeriodInsert =
-  Database['public']['Tables']['thesis_periods']['Insert'];
-type ThesisPeriodUpdate =
-  Database['public']['Tables']['thesis_periods']['Update'];
-type ThesisPeriodRow = Database['public']['Tables']['thesis_periods']['Row'];
+type FormTemplateInsert =
+  Database['public']['Tables']['form_templates']['Insert'];
+type FormTemplateUpdate =
+  Database['public']['Tables']['form_templates']['Update'];
+type FormTemplateRow = Database['public']['Tables']['form_templates']['Row'];
 
 @Injectable()
-export class ThesisPeriodsService {
+export class FormTemplatesService {
   constructor(private supabase: SupabaseService) {}
 
-  async findAll(): Promise<ThesisPeriod[]> {
+  async findAll(): Promise<FormTemplate[]> {
     const { data, error } = await this.supabase
       .getClient()
-      .from('thesis_periods')
+      .from('form_templates')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('upload_date', { ascending: false });
     if (error) throw error;
-    return rowsToThesisPeriods(data);
+    return rowsToFormTemplates(data);
   }
 
-  async findOne(id: string): Promise<ThesisPeriod> {
+  async findOne(id: string): Promise<FormTemplate> {
     const { data, error } = await this.supabase
       .getClient()
-      .from('thesis_periods')
+      .from('form_templates')
       .select('*')
       .eq('id', id)
       .single();
 
     if (error) throw error;
     if (!data) return null as any;
-    return rowToThesisPeriod(data);
+    return rowToFormTemplate(data);
   }
 
-  async create(payload: ThesisPeriodInsert): Promise<ThesisPeriod> {
+  async create(payload: FormTemplateInsert): Promise<FormTemplate> {
     const { data, error } = await (
-      this.supabase.getClient().from('thesis_periods') as any
+      this.supabase.getClient().from('form_templates') as any
     )
       .insert(payload)
       .select()
@@ -50,12 +50,12 @@ export class ThesisPeriodsService {
 
     if (error) throw error;
     if (!data) return null as any;
-    return rowToThesisPeriod(data);
+    return rowToFormTemplate(data);
   }
 
-  async update(id: string, payload: ThesisPeriodUpdate): Promise<ThesisPeriod> {
+  async update(id: string, payload: FormTemplateUpdate): Promise<FormTemplate> {
     const { data, error } = await (
-      this.supabase.getClient().from('thesis_periods') as any
+      this.supabase.getClient().from('form_templates') as any
     )
       .update(payload)
       .eq('id', id)
@@ -63,13 +63,13 @@ export class ThesisPeriodsService {
       .single();
     if (error) throw error;
     if (!data) return null as any;
-    return rowToThesisPeriod(data);
+    return rowToFormTemplate(data);
   }
 
   async delete(id: string): Promise<boolean> {
     const { error } = await this.supabase
       .getClient()
-      .from('thesis_periods')
+      .from('form_templates')
       .delete()
       .eq('id', id);
 

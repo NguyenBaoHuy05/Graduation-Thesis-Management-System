@@ -316,6 +316,64 @@ export interface Database {
           created_at?: string;
         };
       };
+      form_templates: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          file_url: string;
+          type: 'outline' | 'thesis' | 'report' | 'defense_request' | 'other';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          file_url: string;
+          type: 'outline' | 'thesis' | 'report' | 'defense_request' | 'other';
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          file_url?: string;
+          type?: 'outline' | 'thesis' | 'report' | 'defense_request' | 'other';
+          created_at?: string;
+        };
+      };
+      notifications: {
+        Row: {
+          id: string;
+          title: string;
+          content: string | null;
+          date: string | null;
+          type: string | null;
+          is_read: boolean | null;
+          user_id: string | null;
+          message: string | null;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          content?: string | null;
+          date?: string | null;
+          type?: string | null;
+          is_read?: boolean | null;
+          user_id?: string | null;
+          message?: string | null;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          content?: string | null;
+          date?: string | null;
+          type?: string | null;
+          is_read?: boolean | null;
+          user_id?: string | null;
+          message?: string | null;
+        };
+      };
     };
   };
 }

@@ -3,13 +3,33 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { mockForms, FormTemplate } from "@/data/mockData";
-
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
+interface GetFormTemplateData {
+  formTemplates: FormTemplate[];
+}
+const GET_FORM_TEMPLATES = gql`
+  query GetFormTemplates {
+    formTemplates {
+      id
+      name
+      description
+      fileUrl
+      type
+    }
+  }
+`;
 export default function PublicFormsPage() {
-  const [forms, setForms] = useState<FormTemplate[]>([]);
+  const { loading, error, data } =
+    useQuery<GetFormTemplateData>(GET_FORM_TEMPLATES);
 
-  useEffect(() => {
-    setForms([...mockForms]);
-  }, []);
+  const forms = data?.formTemplates || [];
+  console.log(data, error);
+  // if (loading) return <div className="p-10 text-center">Đang tải...</div>;
+  // if (error)
+  //   return (
+  //     <div className="p-10 text-center text-red-500">Lỗi tải dữ liệu.</div>
+  //   );
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
