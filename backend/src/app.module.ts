@@ -16,6 +16,9 @@ import { join } from 'path';
 import { SupabaseModule } from './supabase/supabase.module';
 import { ThesisPeriodsModule } from './thesisPeriods/thesisPeriods.module';
 import { FormTemplatesModule } from './formTemplates/formTemplates.module';
+import { StudentsModule } from './students/students.module';
+import { TeachersModule } from './teachers/teachers.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 /**
  * AppModule
@@ -54,6 +57,9 @@ import { FormTemplatesModule } from './formTemplates/formTemplates.module';
     SupabaseModule,
     ThesisPeriodsModule,
     FormTemplatesModule,
+    StudentsModule,
+    TeachersModule,
+    NotificationsModule,
   ],
 
   // // Controllers: nơi định nghĩa các route HTTP (nếu có). Ở đây `AppController`

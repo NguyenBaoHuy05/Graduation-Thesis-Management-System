@@ -1,19 +1,68 @@
 "use client";
 import React, { useState } from "react";
-import { mockNotifications } from "../../data/mockData";
+// import { mockNotifications } from "../../data/mockData"; // Removed
 import { useAuth } from "../../contexts/AuthContext";
 import { Bell, Info, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { useQuery } from "@apollo/client/react";
+import { gql } from "@apollo/client";
+
+// --- GraphQL ---
+const GET_NOTIFICATIONS = gql`
+  query GetNotifications {
+    notifications {
+      id
+      title
+      content
+      date
+      type
+      isRead
+      message
+    }
+  }
+`;
+
+// Define local Notification interface to match GraphQL
+interface Notification {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  type: string;
+  isRead: boolean;
+  message?: string;
+  userId?: string;
+  createdAt?: string; // mapped from date
+}
 
 const NotificationList: React.FC = () => {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState(
-    mockNotifications.filter((n) => n.userId === user?.profileId)
+
+  const { data, loading, error } = useQuery<{ notifications: any[] }>(
+    GET_NOTIFICATIONS,
+    {
+      fetchPolicy: "network-only",
+    }
+  );
+
+  const [localReads, setLocalReads] = useState<string[]>([]);
+
+  // Since backend doesn't support per-user read status in this simple implementation,
+  // we will just simulate "mark as read" locally for now, or we could add a mutation later.
+  // For the purpose of this task, we will fetch all notifications.
+  // If we want to filter by user, we need to check if schema supports it or if we filter client side.
+  // The seed data didn't have user_id, implying global notifications for now.
+  // We will assume all users see all notifications for now, or filter client-side if valid logic exists.
+
+  const notifications: Notification[] = (data?.notifications || []).map(
+    (n: any) => ({
+      ...n,
+      createdAt: n.date, // Map date to createdAt for sorting
+      isRead: localReads.includes(n.id) || n.isRead, // Combine server status with local read
+    })
   );
 
   const markAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+    setLocalReads((prev) => [...prev, id]);
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -43,6 +92,9 @@ const NotificationList: React.FC = () => {
         return "bg-blue-50 border-blue-200";
     }
   };
+
+  if (loading) return <div>Đang tải thông báo...</div>;
+  if (error) return <div>Lỗi tải thông báo: {error.message}</div>;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -79,8 +131,8 @@ const NotificationList: React.FC = () => {
           {notifications
             .sort(
               (a, b) =>
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime()
+                new Date(b.createdAt || "").getTime() -
+                new Date(a.createdAt || "").getTime()
             )
             .map((notification) => (
               <div
@@ -118,20 +170,22 @@ const NotificationList: React.FC = () => {
                         notification.isRead ? "text-gray-500" : "text-gray-700"
                       }`}
                     >
-                      {notification.message}
+                      {notification.content || notification.message}
                     </p>
 
                     <p className="text-xs text-gray-400">
-                      {new Date(notification.createdAt).toLocaleString(
-                        "vi-VN",
-                        {
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }
-                      )}
+                      {notification.createdAt
+                        ? new Date(notification.createdAt).toLocaleString(
+                            "vi-VN",
+                            {
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )
+                        : ""}
                     </p>
                   </div>
                 </div>

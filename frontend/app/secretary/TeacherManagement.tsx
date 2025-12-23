@@ -1,26 +1,178 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { mockTeachers, Teacher } from "../../data/mockData";
+// import { mockTeachers, Teacher } from "../../data/mockData"; // Removed mock data
 import {
   Plus,
   Search,
   Edit,
   Trash2,
   X,
-  Save,
   User,
   Mail,
   Phone,
-  Briefcase,
   AlertCircle,
-  CheckCircle,
 } from "lucide-react";
+import { useQuery, useMutation } from "@apollo/client/react";
+import { gql } from "@apollo/client";
 
-// Mock implementation of Teacher Management
+// --- GraphQL Operations ---
+const GET_TEACHERS = gql`
+  query GetTeachers {
+    teachers {
+      id
+      code
+      name
+      email
+      phone
+      dateOfBirth
+      gender
+      title
+      titleCoefficient
+      maxTheses
+      currentTheses
+      specialization
+    }
+  }
+`;
+
+const CREATE_TEACHER = gql`
+  mutation CreateTeacher(
+    $code: String!
+    $name: String!
+    $email: String!
+    $phone: String
+    $dateOfBirth: String
+    $gender: String
+    $title: String
+    $titleCoefficient: Float
+    $maxTheses: Int
+    $currentTheses: Int
+    $specialization: String
+  ) {
+    createTeacher(
+      code: $code
+      name: $name
+      email: $email
+      phone: $phone
+      dateOfBirth: $dateOfBirth
+      gender: $gender
+      title: $title
+      titleCoefficient: $titleCoefficient
+      maxTheses: $maxTheses
+      currentTheses: $currentTheses
+      specialization: $specialization
+    ) {
+      id
+      code
+      name
+      email
+    }
+  }
+`;
+
+const UPDATE_TEACHER = gql`
+  mutation UpdateTeacher(
+    $id: ID!
+    $code: String
+    $name: String
+    $email: String
+    $phone: String
+    $dateOfBirth: String
+    $gender: String
+    $title: String
+    $titleCoefficient: Float
+    $maxTheses: Int
+    $currentTheses: Int
+    $specialization: String
+  ) {
+    updateTeacher(
+      id: $id
+      code: $code
+      name: $name
+      email: $email
+      phone: $phone
+      dateOfBirth: $dateOfBirth
+      gender: $gender
+      title: $title
+      titleCoefficient: $titleCoefficient
+      maxTheses: $maxTheses
+      currentTheses: $currentTheses
+      specialization: $specialization
+    ) {
+      id
+      code
+      name
+      email
+    }
+  }
+`;
+
+const DELETE_TEACHER = gql`
+  mutation DeleteTeacher($id: ID!) {
+    deleteTeacher(id: $id)
+  }
+`;
+
+// --- Types ---
+interface Teacher {
+  id: string;
+  code: string;
+  name: string;
+  email: string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  title?: string;
+  titleCoefficient?: number;
+  maxTheses?: number;
+  currentTheses: number;
+  specialization?: string;
+}
+
 const TeacherManagement: React.FC = () => {
   // --- State ---
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const { data, loading, error, refetch } = useQuery<{ teachers: Teacher[] }>(
+    GET_TEACHERS,
+    {
+      // Avoid caching issues during dev
+      fetchPolicy: "network-only",
+    }
+  );
+
+  const [createTeacher] = useMutation(CREATE_TEACHER, {
+    onCompleted: () => {
+      refetch();
+      alert("Thêm giảng viên thành công!");
+    },
+    onError: (err) => {
+      console.error(err);
+      alert("Lỗi khi thêm giảng viên: " + err.message);
+    },
+  });
+
+  const [updateTeacher] = useMutation(UPDATE_TEACHER, {
+    onCompleted: () => {
+      refetch();
+      alert("Cập nhật thông tin giảng viên thành công!");
+    },
+    onError: (err) => {
+      console.error(err);
+      alert("Lỗi khi cập nhật thông tin: " + err.message);
+    },
+  });
+
+  const [deleteTeacher] = useMutation(DELETE_TEACHER, {
+    onCompleted: () => {
+      refetch();
+      alert("Xóa giảng viên thành công!");
+    },
+    onError: (err) => {
+      console.error(err);
+      alert("Lỗi khi xóa giảng viên: " + err.message);
+    },
+  });
+
   const [searchTerm, setSearchTerm] = useState("");
 
   // Modals state
@@ -47,13 +199,6 @@ const TeacherManagement: React.FC = () => {
   };
   const [formData, setFormData] = useState<Partial<Teacher>>(initialFormState);
 
-  // Load data on mount
-  useEffect(() => {
-    // structuredClone or spread to avoid mutating the original mock import directly if we were in a strict env,
-    // but here we want local state isolation.
-    setTeachers([...mockTeachers]);
-  }, []);
-
   // --- Handlers ---
 
   const handleInputChange = (
@@ -77,24 +222,33 @@ const TeacherManagement: React.FC = () => {
   // Create
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    const newId = `t${Date.now()}`; // Simple ID generation
-    const newTeacher: Teacher = {
-      ...(formData as Teacher),
-      id: newId,
-      currentTheses: 0, // Default start
-    };
-
-    setTeachers([...teachers, newTeacher]);
+    createTeacher({
+      variables: {
+        code: formData.code,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        title: formData.title,
+        titleCoefficient: formData.titleCoefficient,
+        maxTheses: formData.maxTheses,
+        currentTheses: 0, // Default start
+        specialization: formData.specialization,
+      },
+    });
     setIsAddModalOpen(false);
     resetForm();
-    // Simulate API success
-    alert("Thêm giảng viên thành công!");
   };
 
   // Update
   const openEditModal = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
-    setFormData(teacher);
+    setFormData({
+      ...teacher,
+      // Ensure date is in YYYY-MM-DD format for input[type="date"]
+      dateOfBirth: teacher.dateOfBirth ? teacher.dateOfBirth.split("T")[0] : "",
+    });
     setIsEditModalOpen(true);
   };
 
@@ -102,14 +256,24 @@ const TeacherManagement: React.FC = () => {
     e.preventDefault();
     if (!selectedTeacher) return;
 
-    const updatedTeachers = teachers.map((t) =>
-      t.id === selectedTeacher.id ? { ...t, ...formData } : t
-    );
-
-    setTeachers(updatedTeachers as Teacher[]);
+    updateTeacher({
+      variables: {
+        id: selectedTeacher.id,
+        code: formData.code,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        title: formData.title,
+        titleCoefficient: formData.titleCoefficient,
+        maxTheses: formData.maxTheses,
+        currentTheses: formData.currentTheses, // Preserve or update
+        specialization: formData.specialization,
+      },
+    });
     setIsEditModalOpen(false);
     resetForm();
-    alert("Cập nhật thông tin giảng viên thành công!");
   };
 
   // Delete
@@ -121,27 +285,34 @@ const TeacherManagement: React.FC = () => {
   const handleDelete = () => {
     if (!selectedTeacher) return;
 
-    // Check constraints (optional mock logic)
+    // Check constraints locally if possible, or rely on backend error
     if (selectedTeacher.currentTheses > 0) {
-      alert("Không thể xóa giảng viên đang hướng dẫn khóa luận!");
+      alert(
+        "Không thể xóa giảng viên đang hướng dẫn khóa luận (kiểm tra client-side)!"
+      );
       setIsDeleteModalOpen(false);
       return;
     }
 
-    const filtered = teachers.filter((t) => t.id !== selectedTeacher.id);
-    setTeachers(filtered);
+    deleteTeacher({
+      variables: { id: selectedTeacher.id },
+    });
     setIsDeleteModalOpen(false);
     setSelectedTeacher(null);
-    alert("Xóa giảng viên thành công!");
   };
 
   // Filter
+  const teachers = data?.teachers || [];
   const filteredTeachers = teachers.filter(
-    (t) =>
+    (t: Teacher) =>
       t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) return <div className="p-6">Đang tải dữ liệu...</div>;
+  if (error)
+    return <div className="p-6 text-red-500">Lỗi: {error.message}</div>;
 
   return (
     <div className="space-y-6 p-6">
@@ -208,7 +379,7 @@ const TeacherManagement: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredTeachers.length > 0 ? (
-                filteredTeachers.map((teacher) => (
+                filteredTeachers.map((teacher: Teacher) => (
                   <tr key={teacher.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
@@ -250,7 +421,8 @@ const TeacherManagement: React.FC = () => {
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          teacher.currentTheses >= teacher.maxTheses
+                          (teacher.currentTheses || 0) >=
+                          (teacher.maxTheses || 0)
                             ? "bg-red-100 text-red-800"
                             : "bg-green-100 text-green-800"
                         }`}
@@ -467,7 +639,7 @@ const TeacherManagement: React.FC = () => {
 
       {/* Edit Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
               <h3 className="text-xl font-bold text-gray-900">
@@ -641,7 +813,7 @@ const TeacherManagement: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && selectedTeacher && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-200">
             <div className="mx-auto bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
               <AlertCircle size={32} className="text-red-600" />

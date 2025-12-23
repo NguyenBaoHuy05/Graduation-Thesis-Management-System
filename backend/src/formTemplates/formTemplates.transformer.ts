@@ -1,30 +1,26 @@
-import { ThesisPeriod, PeriodMilestone } from './formTemplates.entity';
+import { FormTemplate } from './formTemplates.entity';
 import { Database } from '../types/database.types';
 
-type ThesisPeriodRow = Database['public']['Tables']['thesis_periods']['Row'];
+type FormTemplateRow = Database['public']['Tables']['form_templates']['Row'];
 
-export function rowToThesisPeriod(row: ThesisPeriodRow): ThesisPeriod {
+export function rowToFormTemplate(row: FormTemplateRow): FormTemplate {
   return {
     id: row.id,
     name: row.name,
-    academic_year: row.academic_year,
-    start_date: row.start_date,
-    end_date: row.end_date,
-    status: row.status,
-    max_group_size: row.max_group_size || 0,
-    milestones: (row.milestones as unknown as PeriodMilestone[]) || [],
-    created_at: row.created_at,
+    description: row.description || undefined,
+    fileUrl: row.file_url,
+    type: row.type,
   };
 }
 
-export function rowsToThesisPeriods(
-  rows: ThesisPeriodRow[] | null | undefined,
-): ThesisPeriod[] {
+export function rowsToFormTemplates(
+  rows: FormTemplateRow[] | null | undefined,
+): FormTemplate[] {
   if (!rows) return [];
-  return rows.map(rowToThesisPeriod);
+  return rows.map(rowToFormTemplate);
 }
 
 export default {
-  rowToThesisPeriod,
-  rowsToThesisPeriods,
+  rowToFormTemplate,
+  rowsToFormTemplates,
 };

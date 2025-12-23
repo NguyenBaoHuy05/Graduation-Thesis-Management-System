@@ -78,6 +78,7 @@ export interface Student {
   phone: string;
   class: string;
   major: string;
+  className?: string;
   gpa: number;
   creditsAccumulated: number;
 }
@@ -211,6 +212,7 @@ export interface FormTemplate {
   description: string;
   fileUrl: string;
   uploadDate: string;
+  createdAt?: string;
   type: "outline" | "thesis" | "report" | "defense_request" | "other";
 }
 

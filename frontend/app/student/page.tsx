@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Student } from "@/data/mockData";
+import { useQuery } from "@apollo/client/react";
+import { gql } from "@apollo/client";
 import {
   LogOut,
   BookOpen,
@@ -22,8 +24,6 @@ import ThesisProgress from "./ThesisProgress";
 import ThesisSubmission from "./ThesisSubmission";
 import ComplaintForm from "./ComplaintForm";
 import NotificationList from "./NotificationList";
-
-import { mockNotifications, Notification } from "@/data/mockData";
 
 type TabType =
   | "registration"
@@ -71,17 +71,63 @@ const StudentDashboard: React.FC = () => {
   };
   const { user } = useAuth();
   const [showNotifs, setShowNotifs] = useState(false);
-  const [internalNotifs, setInternalNotifs] = useState<Notification[]>([]);
+  const [internalNotifs, setInternalNotifs] = useState<any[]>([]);
+  const [selectedNotification, setSelectedNotification] = useState<any | null>(
+    null
+  );
+
+  // --- Notifications Fetching for Header ---
+  const GET_HEADER_NOTIFICATIONS = gql`
+    query GetHeaderNotifications {
+      notifications {
+        id
+        title
+        content
+        date
+        type
+        isRead
+      }
+    }
+  `;
+
+  const { data: headerNotifsData } = useQuery<{ notifications: any[] }>(
+    GET_HEADER_NOTIFICATIONS,
+    {
+      fetchPolicy: "network-only",
+    }
+  );
+
+  // Local state to track read notifications (mocking per-user read status)
+  const [localReads, setLocalReads] = useState<string[]>([]);
+
+  const handleMarkAsRead = (notification: any) => {
+    if (!notification.isRead && !localReads.includes(notification.id)) {
+      setLocalReads((prev) => [...prev, notification.id]);
+    }
+  };
+
+  const handleMarkAllAsRead = () => {
+    const unreadIds = internalNotifs
+      .filter((n) => !n.isRead && !localReads.includes(n.id))
+      .map((n) => n.id);
+    setLocalReads((prev) => [...prev, ...unreadIds]);
+  };
 
   useEffect(() => {
-    // Only show internal notifications if user is logged in
-    if (user) {
-      const internal = mockNotifications.filter((n) => n.type === "internal");
-      setInternalNotifs(internal);
+    if (user && headerNotifsData?.notifications) {
+      const internal = headerNotifsData.notifications.filter(
+        (n: any) => n.type === "internal"
+      );
+      setInternalNotifs(
+        internal.map((n: any) => ({
+          ...n,
+          isRead: n.isRead || localReads.includes(n.id),
+        }))
+      );
     } else {
       setInternalNotifs([]);
     }
-  }, [user]);
+  }, [user, headerNotifsData, localReads]);
 
   const unreadCount = internalNotifs.filter((n) => !n.isRead).length;
   return (
@@ -146,7 +192,10 @@ const StudentDashboard: React.FC = () => {
                         <h3 className="font-bold text-sm text-gray-700">
                           Thông báo của bạn
                         </h3>
-                        <button className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                        <button
+                          onClick={handleMarkAllAsRead}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                        >
                           Đánh dấu đã đọc
                         </button>
                       </div>
@@ -155,6 +204,11 @@ const StudentDashboard: React.FC = () => {
                           internalNotifs.map((n) => (
                             <div
                               key={n.id}
+                              onClick={() => {
+                                handleMarkAsRead(n);
+                                setSelectedNotification(n);
+                                setShowNotifs(false);
+                              }}
                               className={`px-4 py-3 hover:bg-gray-50 border-b last:border-0 border-gray-100 cursor-pointer ${
                                 !n.isRead ? "bg-blue-50/50" : ""
                               }`}
@@ -250,6 +304,45 @@ const StudentDashboard: React.FC = () => {
           <main className="flex-1 min-w-0">{renderContent()}</main>
         </div>
       </div>
+
+      {/* Notification Detail Modal */}
+      {selectedNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-900">
+                Chi tiết thông báo
+              </h3>
+              <button
+                onClick={() => setSelectedNotification(null)}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6">
+              <h4 className="text-xl font-bold text-[#004c8c] mb-2 leading-tight">
+                {selectedNotification.title}
+              </h4>
+              <p className="text-xs text-gray-500 mb-4 flex items-center gap-2">
+                <Bell size={14} />
+                {selectedNotification.date}
+              </p>
+              <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-line leading-relaxed">
+                {selectedNotification.content}
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex justify-end">
+              <button
+                onClick={() => setSelectedNotification(null)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
