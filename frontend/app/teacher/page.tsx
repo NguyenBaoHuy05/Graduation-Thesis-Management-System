@@ -11,17 +11,20 @@ import {
   Menu,
   X,
   Scan,
+  FileText, // Added
 } from "lucide-react";
 import Image from "next/image";
 import TopicProposal from "./TopicProposal";
 import StudentManagement from "./StudentManagement";
 import ProgressEvaluation from "./ProgressEvaluation";
+import StudentSubmissions from "./StudentSubmissions"; // New Import
 import NotificationList from "../student/NotificationList";
 import PlagiarismReview from "./PlagiarismReview";
 
 type TabType =
   | "proposal"
   | "students"
+  | "submissions"
   | "evaluation"
   | "plagiarism"
   | "notification";
@@ -35,6 +38,7 @@ const TeacherDashboard: React.FC = () => {
   const tabs = [
     { id: "proposal" as TabType, name: "Đề xuất đề tài", icon: Lightbulb },
     { id: "students" as TabType, name: "Quản lý sinh viên", icon: Users },
+    { id: "submissions" as TabType, name: "Duyệt bài nộp", icon: FileText },
     { id: "evaluation" as TabType, name: "Đánh giá tiến độ", icon: TrendingUp },
     { id: "plagiarism" as TabType, name: "Rà soát đạo văn", icon: Scan },
     { id: "notification" as TabType, name: "Thông báo", icon: Bell },
@@ -46,6 +50,8 @@ const TeacherDashboard: React.FC = () => {
         return <TopicProposal />;
       case "students":
         return <StudentManagement />;
+      case "submissions":
+        return <StudentSubmissions />;
       case "evaluation":
         return <ProgressEvaluation />;
       case "plagiarism":

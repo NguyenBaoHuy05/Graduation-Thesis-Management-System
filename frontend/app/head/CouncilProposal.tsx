@@ -1,38 +1,30 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import {
-  DefenseCouncil,
-  mockCouncils,
-  mockTeachers,
-  mockTopics,
-  mockThesisPeriods,
-  mockStudents,
-} from "../../data/mockData";
+import React, { useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { gql } from "@apollo/client";
 import {
   Plus,
-  Search,
-  Filter,
   Edit,
   Trash2,
   X,
   Users,
   Calendar,
-  MapPin,
   Briefcase,
   AlertTriangle,
+  CheckCircle,
+  HelpCircle,
 } from "lucide-react";
 
-// --- GraphQL Queries & Mutations ---
-const GET_DATA = gql`
-  query GetData {
+// --- GraphQL ---
+const GET_INITIAL_DATA = gql`
+  query GetCouncilManagementData {
     councils {
       id
       name
       presidentId
       secretaryId
       reviewerId
+      commissionerId
       memberIds
       topicIds
       status
@@ -51,8 +43,21 @@ const GET_DATA = gql`
       title
       status
     }
+    thesisPeriods {
+      id
+      status
+    }
+    getAllRegistrations {
+      id
+      status
+      topic {
+        id
+      }
+    }
   }
 `;
+// Note: Assuming 'thesisPeriods', 'teachers', 'topics', 'councils' are all available root queries.
+// If not, we might need separate queries. Based on standard resolvers, they should be there.
 
 const CREATE_COUNCIL = gql`
   mutation CreateCouncil($input: CreateCouncilInput!) {
@@ -80,41 +85,56 @@ const DELETE_COUNCIL = gql`
 
 const CouncilProposal: React.FC = () => {
   // --- State & Hooks ---
-  const { data, loading, error, refetch } = useQuery<any>(GET_DATA, {
-    fetchPolicy: "network-only",
-  });
+  const { data, loading, error, refetch } = useQuery<any>(GET_INITIAL_DATA);
 
   const [createCouncil] = useMutation(CREATE_COUNCIL, {
     onCompleted: () => {
-      alert("Tạo đề xuất hội đồng thành công!");
+      alert("Tạo hội đồng thành công!");
       refetch();
       closeModal();
     },
-    onError: (err) => alert("Lỗi khi tạo hội đồng: " + err.message),
+    onError: (err) => {
+      alert("Lỗi: " + err.message);
+      console.error(err);
+    },
   });
 
   const [updateCouncil] = useMutation(UPDATE_COUNCIL, {
     onCompleted: () => {
-      alert("Cập nhật đề xuất hội đồng thành công!");
+      alert("Cập nhật hội đồng thành công!");
       refetch();
       closeModal();
     },
-    onError: (err) => alert("Lỗi khi cập nhật hội đồng: " + err.message),
+    onError: (err) => alert("Lỗi: " + err.message),
   });
 
   const [deleteCouncil] = useMutation(DELETE_COUNCIL, {
     onCompleted: () => {
-      alert("Đã xóa đề xuất hội đồng thành công!");
+      alert("Đã xóa hội đồng!");
       refetch();
     },
-    onError: (err) => alert("Lỗi khi xóa: " + err.message),
+    onError: (err) => alert("Lỗi: " + err.message),
   });
 
+  // Derived Data
   const councils = data?.councils || [];
   const teachers = data?.teachers || [];
-  const topics = data?.topics || [];
+  const allTopics = data?.topics || [];
+  const allRegistrations = data?.getAllRegistrations || [];
+  const activePeriod = data?.thesisPeriods?.find(
+    (p: any) => p.status === "active"
+  );
 
-  const [searchTerm, setSearchTerm] = useState("");
+  // Filter topics based on REGISTRATION status
+  // We prioritize 'defense_ready' and 'defense_registered'
+  const defenseReadyTopicIds = allRegistrations
+    .filter((r: any) =>
+      ["defense_ready", "defense_registered", "thesis_approved"].includes(
+        r.status
+      )
+    )
+    .map((r: any) => r.topic?.id);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCouncil, setSelectedCouncil] = useState<any | null>(null);
 
@@ -124,11 +144,22 @@ const CouncilProposal: React.FC = () => {
     secretaryId: "",
     memberIds: [] as string[],
     reviewerId: "",
+    commissionerId: "", // Added
     topicIds: [] as string[],
     status: "draft",
     description: "",
+    date: "",
+    time: "",
+    room: "",
   };
   const [formData, setFormData] = useState(initialFormState);
+
+  const availableTopics = allTopics.filter(
+    (t: any) =>
+      defenseReadyTopicIds.includes(t.id) ||
+      formData.topicIds.includes(t.id) ||
+      ["defense_ready", "defense_registered"].includes(t.status)
+  );
 
   const openModal = (council?: any) => {
     if (council) {
@@ -139,9 +170,13 @@ const CouncilProposal: React.FC = () => {
         secretaryId: council.secretaryId,
         memberIds: council.memberIds || [],
         reviewerId: council.reviewerId,
+        commissionerId: council.commissionerId || "",
         topicIds: council.topicIds || [],
         status: council.status,
         description: council.description || "",
+        date: council.date || "",
+        time: council.time || "",
+        room: council.room || "",
       });
     } else {
       setSelectedCouncil(null);
@@ -158,15 +193,20 @@ const CouncilProposal: React.FC = () => {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!activePeriod && !selectedCouncil) {
+      alert("Không có kỳ khóa luận đang hoạt động để tạo hội đồng!");
+      return;
+    }
+
     // Member Validation
     const allMembers = [
       formData.presidentId,
       formData.secretaryId,
       formData.reviewerId,
+      formData.commissionerId,
       ...(formData.memberIds || []),
     ].filter(Boolean) as string[];
 
-    // Check duplicates in same council
     if (new Set(allMembers).size !== allMembers.length) {
       alert(
         "Một giảng viên không thể đảm nhiệm nhiều vai trò trong cùng hội đồng!"
@@ -174,58 +214,87 @@ const CouncilProposal: React.FC = () => {
       return;
     }
 
+    const inputData = {
+      ...formData,
+      periodId: activePeriod?.id || councils[0]?.periodId, // Fallback for update
+    };
+
     if (selectedCouncil) {
-      // Update
       updateCouncil({
         variables: {
           input: {
             id: selectedCouncil.id,
-            ...formData,
+            ...inputData,
           },
         },
       });
     } else {
-      // Create
       createCouncil({
         variables: {
-          input: {
-            ...formData,
-            periodId: "tp001", // TODO: Get active period dynamically or from selection
-            status: "draft",
-          },
+          input: inputData,
         },
       });
     }
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Bạn có chắc chắn muốn xóa đề xuất này không?")) {
+    if (confirm("Bạn có chắc chắn muốn xóa hội đồng này không?")) {
       deleteCouncil({ variables: { id } });
     }
   };
 
-  // Helper to get teacher name
   const getTeacherName = (id?: string) => {
     if (!id) return "-";
     return teachers.find((t: any) => t.id === id)?.name || "Unknown";
   };
 
+  const getTopicTitle = (id: string) => {
+    return allTopics.find((t: any) => t.id === id)?.title || id;
+  };
+
+  if (loading)
+    return (
+      <div className="p-8 text-center text-gray-500">Đang tải dữ liệu...</div>
+    );
+  if (error)
+    return (
+      <div className="p-8 text-center text-red-500">
+        Lỗi kết nối: {error.message}
+      </div>
+    );
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="text-black space-y-6 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <Users className="text-blue-600" />
-          Đề xuất Hội đồng Bảo vệ
-        </h2>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <Users className="text-blue-600" />
+            Quản lý Hội đồng Bảo vệ
+          </h2>
+          <p className="text-sm text-gray-500">
+            Tổ chức và phân công hội đồng chấm khóa luận
+          </p>
+        </div>
         <button
           onClick={() => openModal()}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm"
+          disabled={!activePeriod}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
         >
           <Plus size={20} />
-          <span>Thêm đề xuất</span>
+          <span>Thêm hội đồng</span>
         </button>
       </div>
+
+      {!activePeriod && (
+        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg flex items-center gap-2 text-yellow-800">
+          <AlertTriangle size={20} />
+          <span>
+            Chưa có Kỳ khóa luận nào đang hoạt động (Active). Vui lòng kích hoạt
+            kỳ khóa luận trước.
+          </span>
+        </div>
+      )}
 
       {/* List */}
       <div className="grid grid-cols-1 gap-6">
@@ -247,9 +316,7 @@ const CouncilProposal: React.FC = () => {
                         : "bg-gray-100 text-gray-700"
                     }`}
                   >
-                    {council.status === "published"
-                      ? "Đã công bố"
-                      : "Nháp / Đề xuất"}
+                    {council.status === "published" ? "Đã công bố" : "Bản nháp"}
                   </span>
                 </div>
                 {council.description && (
@@ -258,11 +325,11 @@ const CouncilProposal: React.FC = () => {
                   </p>
                 )}
                 <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                  {/* Status Info */}
                   {council.date ? (
-                    <span className="text-green-600 flex items-center gap-1">
-                      <Calendar size={14} /> {council.date} - {council.time} (
-                      {council.room})
+                    <span className="text-green-600 flex items-center gap-1 font-bold">
+                      <Calendar size={14} />{" "}
+                      {new Date(council.date).toLocaleDateString("vi-VN")}{" "}
+                      {council.time} - Phòng {council.room}
                     </span>
                   ) : (
                     <span className="text-orange-500 italic flex items-center gap-1">
@@ -297,27 +364,40 @@ const CouncilProposal: React.FC = () => {
                   đồng
                 </h4>
                 <ul className="space-y-2 text-sm">
-                  <li className="flex justify-between">
+                  <li className="flex justify-between border-b border-gray-200 pb-1">
                     <span className="text-gray-500">Chủ tịch:</span>
-                    <span className="font-medium">
+                    <span className="font-bold text-gray-800">
                       {getTeacherName(council.presidentId)}
                     </span>
                   </li>
-                  <li className="flex justify-between">
+                  <li className="flex justify-between border-b border-gray-200 pb-1">
                     <span className="text-gray-500">Thư ký:</span>
                     <span className="font-medium">
                       {getTeacherName(council.secretaryId)}
                     </span>
                   </li>
-                  <li className="flex justify-between">
+                  <li className="flex justify-between border-b border-gray-200 pb-1">
                     <span className="text-gray-500">Phản biện:</span>
                     <span className="font-medium">
                       {getTeacherName(council.reviewerId)}
                     </span>
                   </li>
-                  {council.memberIds.map((mid: any, idx: number) => (
-                    <li key={mid} className="flex justify-between">
-                      <span className="text-gray-500">Ủy viên {idx + 1}:</span>
+                  {council.commissionerId && (
+                    <li className="flex justify-between border-b border-gray-200 pb-1">
+                      <span className="text-gray-500">Ủy viên:</span>
+                      <span className="font-medium">
+                        {getTeacherName(council.commissionerId)}
+                      </span>
+                    </li>
+                  )}
+                  {council.memberIds?.map((mid: any, idx: number) => (
+                    <li
+                      key={mid}
+                      className="flex justify-between border-b border-gray-200 pb-1"
+                    >
+                      <span className="text-gray-500">
+                        Thành viên {idx + 1}:
+                      </span>
                       <span className="font-medium">{getTeacherName(mid)}</span>
                     </li>
                   ))}
@@ -327,23 +407,20 @@ const CouncilProposal: React.FC = () => {
               {/* Assignments */}
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Briefcase size={16} className="text-gray-500" /> Ds Sinh viên
-                  / Đề tài
+                  <Briefcase size={16} className="text-gray-500" /> Đề tài được
+                  phân công ({council.topicIds?.length || 0})
                 </h4>
-                {council.topicIds.length > 0 ? (
-                  <ul className="space-y-2 text-sm list-disc list-inside text-gray-700">
-                    {council.topicIds.map((tid: any) => {
-                      const topic = mockTopics.find((t) => t.id === tid);
-                      return (
-                        <li
-                          key={tid}
-                          className="line-clamp-1"
-                          title={topic?.title}
-                        >
-                          {topic?.title || tid}
-                        </li>
-                      );
-                    })}
+                {council.topicIds?.length > 0 ? (
+                  <ul className="space-y-2 text-sm list-decimal list-inside text-gray-700 max-h-40 overflow-y-auto pr-2">
+                    {council.topicIds.map((tid: any) => (
+                      <li
+                        key={tid}
+                        className="truncate"
+                        title={getTopicTitle(tid)}
+                      >
+                        {getTopicTitle(tid)}
+                      </li>
+                    ))}
                   </ul>
                 ) : (
                   <p className="text-sm text-gray-400 italic">
@@ -356,18 +433,18 @@ const CouncilProposal: React.FC = () => {
         ))}
         {councils.length === 0 && (
           <div className="text-center py-12 text-gray-500 italic bg-white rounded-xl border border-gray-200">
-            Chưa có hội đồng nào được tạo.
+            Chưa có hội đồng nào. Nhấn "Thêm hội đồng" để bắt đầu.
           </div>
         )}
       </div>
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto flex flex-col">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-lg font-bold text-gray-900">
-                {selectedCouncil ? "Cập nhật Đề xuất" : "Tạo Đề xuất Hội đồng"}
+                {selectedCouncil ? "Cập nhật Hội đồng" : "Tạo Hội đồng Mới"}
               </h3>
               <button
                 onClick={closeModal}
@@ -376,46 +453,96 @@ const CouncilProposal: React.FC = () => {
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleSave} className="p-6 space-y-6">
+
+            <form
+              onSubmit={handleSave}
+              className="p-6 space-y-6 overflow-y-auto flex-1 text-black"
+            >
+              {/* Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
                     Tên hội đồng
                   </label>
                   <input
                     required
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    placeholder="VD: Hội đồng CNTT 1"
+                    placeholder="VD: Hội đồng Bảo vệ K20 - CNPM 01"
                   />
                 </div>
+
+                <div className="md:col-span-2 grid grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Ngày bảo vệ
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border rounded-lg"
+                      value={formData.date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, date: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Giờ
+                    </label>
+                    <input
+                      type="time"
+                      className="w-full px-3 py-2 border rounded-lg"
+                      value={formData.time}
+                      onChange={(e) =>
+                        setFormData({ ...formData, time: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Phòng
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="VD: C301"
+                      value={formData.room}
+                      onChange={(e) =>
+                        setFormData({ ...formData, room: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mô tả / Ghi chú
+                    Ghi chú
                   </label>
                   <textarea
                     className="w-full px-3 py-2 border rounded-lg"
                     rows={2}
-                    value={formData.description || ""}
+                    value={formData.description}
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
-                    placeholder="Nhập mô tả chi tiết cho hội đồng..."
+                    placeholder="Thông tin thêm..."
                   />
                 </div>
               </div>
 
-              <div className="space-y-3 pt-4 border-t">
-                <h4 className="font-semibold text-gray-900">
-                  Thành phần hội đồng
+              {/* Members Section */}
+              <div className="space-y-3 pt-4 border-t border-gray-100">
+                <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                  <Users size={18} /> Thành phần hội đồng
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Chủ tịch
+                      Chủ tịch <span className="text-red-500">*</span>
                     </label>
                     <select
                       required
@@ -438,7 +565,7 @@ const CouncilProposal: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Thư ký
+                      Thư ký <span className="text-red-500">*</span>
                     </label>
                     <select
                       required
@@ -461,7 +588,7 @@ const CouncilProposal: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phản biện
+                      Phản biện <span className="text-red-500">*</span>
                     </label>
                     <select
                       required
@@ -481,94 +608,128 @@ const CouncilProposal: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Ủy viên (Chọn 1 hoặc nhiều)
+                      Ủy viên (Optional)
                     </label>
                     <select
-                      multiple
-                      className="w-full px-3 py-2 border rounded-lg h-24"
-                      value={formData.memberIds}
-                      onChange={(e) => {
-                        const selected = Array.from(
-                          e.target.selectedOptions,
-                          (option) => option.value
-                        );
-                        setFormData({ ...formData, memberIds: selected });
-                      }}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      value={formData.commissionerId}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          commissionerId: e.target.value,
+                        })
+                      }
                     >
+                      <option value="">-- Chọn Ủy viên --</option>
                       {teachers.map((t: any) => (
                         <option key={t.id} value={t.id}>
                           {t.name} ({t.code})
                         </option>
                       ))}
                     </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Giữ Ctrl để chọn nhiều
-                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="text-black space-y-3 pt-4 border-t">
-                <h4 className="font-semibold text-gray-900">
-                  Phân công đề tài
+              {/* Topics Selection */}
+              <div className="pt-4 border-t border-gray-100">
+                <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
+                  <Briefcase size={18} /> Phân công Đề tài
                 </h4>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Chọn đề tài bảo vệ (Các đề tài đã được duyệt)
-                </label>
-                <div className="max-h-48 overflow-y-auto border rounded-lg p-2 space-y-2">
-                  {topics
-                    .filter((t: any) => t.status === "approved")
-                    .map((topic: any) => (
+                <p className="text-xs text-gray-500 mb-2">
+                  Chọn các đề tài sẽ được bảo vệ tại hội đồng này.
+                </p>
+                <div className="max-h-60 overflow-y-auto border rounded-lg p-2 space-y-1 bg-gray-50">
+                  {availableTopics.length > 0 ? (
+                    availableTopics.map((topic: any) => (
                       <label
                         key={topic.id}
-                        className="flex items-start gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                        className="flex items-center gap-3 p-2 hover:bg-white rounded cursor-pointer transition"
                       >
                         <input
                           type="checkbox"
-                          className="mt-1"
-                          checked={formData.topicIds?.includes(topic.id)}
+                          className="w-4 h-4 text-blue-600 rounded"
+                          checked={formData.topicIds.includes(topic.id)}
                           onChange={(e) => {
-                            const current = formData.topicIds || [];
-                            if (e.target.checked)
-                              setFormData({
-                                ...formData,
-                                topicIds: [...current, topic.id],
-                              });
-                            else
-                              setFormData({
-                                ...formData,
-                                topicIds: current.filter(
-                                  (id) => id !== topic.id
-                                ),
-                              });
+                            const isChecked = e.target.checked;
+                            setFormData((prev) => {
+                              const current = prev.topicIds;
+                              if (isChecked)
+                                return {
+                                  ...prev,
+                                  topicIds: [...current, topic.id],
+                                };
+                              else
+                                return {
+                                  ...prev,
+                                  topicIds: current.filter(
+                                    (id) => id !== topic.id
+                                  ),
+                                };
+                            });
                           }}
                         />
-                        <div>
-                          <div className="font-medium text-sm">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm text-gray-900">
                             {topic.title}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {mockStudents.length} SV tham gia
+                            Trạng thái: {topic.status}
                           </div>
                         </div>
                       </label>
-                    ))}
+                    ))
+                  ) : (
+                    <p className="text-center text-gray-400 py-4 italic">
+                      Không có đề tài khả dụng (Đã duyệt/Sẵn sàng bảo vệ)
+                    </p>
+                  )}
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
+              {/* Status */}
+              <div className="flex gap-4 items-center pt-4 border-t border-gray-100">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="status"
+                    value="draft"
+                    checked={formData.status === "draft"}
+                    onChange={() =>
+                      setFormData({ ...formData, status: "draft" })
+                    }
+                  />
+                  <span className="text-sm font-medium">Lưu nháp</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="status"
+                    value="published"
+                    checked={formData.status === "published"}
+                    onChange={() =>
+                      setFormData({ ...formData, status: "published" })
+                    }
+                  />
+                  <span className="text-sm font-medium text-green-700 font-bold">
+                    Công bố (Sinh viên thấy được)
+                  </span>
+                </label>
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6 sticky bottom-0 bg-white z-10 pb-2">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  className="px-5 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-200"
                 >
-                  {selectedCouncil ? "Lưu thay đổi" : "Tạo đề xuất"}
+                  {selectedCouncil ? "Lưu Thay Đổi" : "Tạo Hội Đồng"}
                 </button>
               </div>
             </form>

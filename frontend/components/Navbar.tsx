@@ -6,6 +6,7 @@ export default function Navbar() {
   const navLinks = [
     { name: "TRANG CHỦ", href: "/" },
     { name: "TRA CỨU BIỂU MẪU", href: "/forms" },
+    { name: "LỊCH SỬ KỲ KHÓA LUẬN", href: "/archive" },
     { name: "CẨM NANG GIẢNG VIÊN", href: "#" },
     // { name: "CỔNG THÔNG TIN", href: "#" },
   ];

@@ -11,6 +11,6 @@ async function bootstrap() {
     preflightContinue: false,
     credentials: true,
   });
-  await app.listen(process.env.PORT ?? 4000);
+  await app.listen(process.env.PORT ?? 3001);
 }
 bootstrap();

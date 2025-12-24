@@ -1,337 +1,393 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useQuery, useMutation } from "@apollo/client/react";
+import { gql } from "@apollo/client";
+import { useAuth } from "../../contexts/AuthContext";
 import {
-  mockPlagiarismChecks,
-  mockStudents,
-  PlagiarismCheck,
-  Student,
-} from "../../data/mockData";
-import {
-  Search,
   CheckCircle,
   XCircle,
-  AlertTriangle,
   FileText,
   Scan,
   RotateCw,
-  Clock,
   Users,
+  Monitor,
+  ExternalLink,
+  ShieldCheck,
+  Clock,
 } from "lucide-react";
 
-/**
- * Plagiarism Review Component
- * Allows teachers to check and review plagiarism results.
- */
-const PlagiarismReview: React.FC = () => {
-  // State
-  const [reviews, setReviews] = useState<PlagiarismCheck[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(
-    null
-  );
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0);
-
-  // Review Form
-  const [feedback, setFeedback] = useState("");
-
-  // Load data
-  useEffect(() => {
-    setReviews([...mockPlagiarismChecks]);
-  }, []);
-
-  // Handlers
-  const handleCheckPlagiarism = (studentId: string) => {
-    // Simulate system scan
-    setIsScanning(true);
-    setScanProgress(0);
-
-    const interval = setInterval(() => {
-      setScanProgress((prev) => {
-        if (prev >= 90) {
-          return prev;
-        }
-        return prev + 10;
-      });
-    }, 200);
-
-    setTimeout(() => {
-      clearInterval(interval);
-      setScanProgress(100);
-
-      // Generate random result
-      const randomScore = Math.floor(Math.random() * 30); // 0-30%
-      const passed = randomScore < 20;
-
-      // Update or create review
-      const existing = reviews.find((r) => r.studentId === studentId);
-      if (existing) {
-        const updated = reviews.map((r) =>
-          r.studentId === studentId
-            ? {
-                ...r,
-                similarityPercentage: randomScore,
-                checkDate: new Date().toISOString().split("T")[0],
-                status: passed ? ("passed" as const) : ("failed" as const), // Default logic, teacher can override
-                reportFile: `turnitin_report_${studentId}.pdf`,
-                feedback: "",
-              }
-            : r
-        );
-        setReviews(updated);
-      } else {
-        const newCheck: PlagiarismCheck = {
-          id: `pc${Date.now()}`,
-          studentId: studentId,
-          registrationId: `reg${Date.now()}`, // Mock
-          similarityPercentage: randomScore,
-          checkDate: new Date().toISOString().split("T")[0],
-          status: "pending", // Teacher needs to review
-          reportFile: `turnitin_report_${studentId}.pdf`,
-          feedback: "",
-        };
-        setReviews([...reviews, newCheck]);
+// --- GraphQL ---
+const GET_TEACHER_REGISTRATIONS = gql`
+  query GetTeacherRegistrations($teacherId: String!) {
+    teacherRegistrations(teacherId: $teacherId) {
+      id
+      studentId
+      status
+      thesisFileUrl
+      thesisSubmittedAt
+      codeLink
+      score
+      feedback: outlineFeedback
+      student {
+        id
+        name
+        code
+        class
       }
+      topic {
+        title
+      }
+    }
+  }
+`;
 
-      setIsScanning(false);
-      alert(`Đã hoàn tất kiểm tra! Tỷ lệ trùng lặp: ${randomScore}%`);
-    }, 2500);
+const REVIEW_THESIS = gql`
+  mutation ReviewThesis(
+    $registrationId: String!
+    $status: String!
+    $score: Float
+  ) {
+    reviewThesis(
+      registrationId: $registrationId
+      status: $status
+      score: $score
+    ) {
+      id
+      status
+      score
+    }
+  }
+`;
+
+const PlagiarismReview: React.FC = () => {
+  const { user } = useAuth();
+  const [selectedRegId, setSelectedRegId] = useState<string | null>(null);
+  const [similarityScore, setSimilarityScore] = useState<number | string>("");
+  const [evaluating, setEvaluating] = useState(false);
+
+  const { data, loading, refetch } = useQuery<{ teacherRegistrations: any[] }>(
+    GET_TEACHER_REGISTRATIONS,
+    {
+      variables: { teacherId: user?.profileId },
+      skip: !user?.profileId,
+    }
+  );
+
+  const [reviewThesis] = useMutation(REVIEW_THESIS);
+
+  // Filter for students who reached Submission phase
+  const submissions =
+    data?.teacherRegistrations?.filter((r) =>
+      [
+        "submitted",
+        "defense_ready",
+        "thesis_rejected",
+        "defense_registered",
+        "thesis_approved",
+      ].includes(r.status)
+    ) || [];
+
+  const selectedReg = submissions.find((r) => r.id === selectedRegId);
+
+  const handleUpdateStatus = async (status: string) => {
+    if (!selectedReg) return;
+    if (similarityScore === "" && status === "defense_ready") {
+      if (!confirm("Bạn chưa nhập % trùng lặp. Vẫn tiếp tục?")) return;
+    }
+
+    if (
+      !confirm(
+        status === "defense_ready"
+          ? "Xác nhận ĐẠT yêu cầu rà soát?"
+          : "Xác nhận KHÔNG ĐẠT và yêu cầu nộp lại?"
+      )
+    )
+      return;
+
+    setEvaluating(true);
+    try {
+      await reviewThesis({
+        variables: {
+          registrationId: selectedReg.id,
+          status: status,
+          score: similarityScore
+            ? parseFloat(similarityScore.toString())
+            : null,
+        },
+      });
+      alert("Cập nhật thành công!");
+      refetch();
+    } catch (err: any) {
+      alert("Lỗi: " + err.message);
+    } finally {
+      setEvaluating(false);
+    }
   };
-
-  const handleUpdateStatus = (id: string, newStatus: "passed" | "failed") => {
-    const updated = reviews.map((r) =>
-      r.id === id ? { ...r, status: newStatus, feedback: feedback } : r
-    );
-    setReviews(updated);
-    setFeedback("");
-    alert("Đã cập nhật kết quả rà soát!");
-  };
-
-  // Render Helpers
-  const getStudent = (id: string) => mockStudents.find((s) => s.id === id);
-  const getCheck = (studentId: string) =>
-    reviews.find((r) => r.studentId === studentId);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="text-black space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <Scan className="text-blue-600" />
+            <Scan className="text-indigo-600" />
             Rà soát Đạo văn
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Kiểm tra và đánh giá mức độ trùng lặp tài liệu của sinh viên.
+            Kiểm tra mức độ trùng lặp và cấp quyền bảo vệ.
           </p>
+        </div>
+        <div className="flex gap-2 text-sm">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-indigo-100 border border-indigo-500"></div>{" "}
+            Đã nộp
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-green-100 border border-green-500"></div>{" "}
+            Đạt
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-red-100 border border-red-500"></div>{" "}
+            Không đạt
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Student List */}
-        <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 bg-gray-50">
-            <h3 className="font-bold text-gray-700">Danh sách sinh viên</h3>
+        <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
+          <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+            <h3 className="font-bold text-gray-700">
+              Danh sách nộp bài ({submissions.length})
+            </h3>
+            <button
+              onClick={() => refetch()}
+              className="p-1 hover:bg-gray-200 rounded"
+            >
+              <RotateCw size={16} className="text-gray-500" />
+            </button>
           </div>
-          <div className="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
-            {mockStudents.map((student) => {
-              const check = getCheck(student.id);
-              const isSelected = selectedStudentId === student.id;
+          <div className="divide-y divide-gray-100 overflow-y-auto flex-1">
+            {loading ? (
+              <p className="p-4 text-center text-gray-500">Đang tải...</p>
+            ) : (
+              submissions.map((reg) => {
+                const isSelected = selectedRegId === reg.id;
+                let statusColor = "bg-gray-50 border-l-4 border-gray-300";
+                if (reg.status === "submitted")
+                  statusColor = "bg-white border-l-4 border-indigo-500";
+                if (
+                  reg.status === "defense_ready" ||
+                  reg.status === "thesis_approved" ||
+                  reg.status === "defense_registered"
+                )
+                  statusColor = "bg-green-50 border-l-4 border-green-500";
+                if (reg.status === "thesis_rejected")
+                  statusColor = "bg-red-50 border-l-4 border-red-500";
 
-              return (
-                <div
-                  key={student.id}
-                  onClick={() => {
-                    setSelectedStudentId(student.id);
-                    setFeedback(check?.feedback || "");
-                  }}
-                  className={`p-4 cursor-pointer transition hover:bg-gray-50 ${
-                    isSelected ? "bg-blue-50 border-l-4 border-blue-600" : ""
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {student.name}
-                      </p>
-                      <p className="text-xs text-gray-500">{student.code}</p>
+                return (
+                  <div
+                    key={reg.id}
+                    onClick={() => {
+                      setSelectedRegId(reg.id);
+                      setSimilarityScore(reg.score ?? "");
+                    }}
+                    className={`p-4 cursor-pointer transition hover:bg-gray-100 ${
+                      isSelected
+                        ? "bg-indigo-50 border-l-4 border-indigo-600"
+                        : statusColor
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-gray-900">
+                          {reg.student?.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {reg.student?.code}
+                        </p>
+                        <p
+                          className="text-xs text-indigo-600 mt-1 truncate max-w-[180px]"
+                          title={reg.topic?.title}
+                        >
+                          {reg.topic?.title}
+                        </p>
+                      </div>
+                      {reg.score !== null && (
+                        <span
+                          className={`text-xs px-2 py-1 rounded font-bold ${
+                            reg.score <= 20
+                              ? "bg-green-200 text-green-800"
+                              : "bg-red-200 text-red-800"
+                          }`}
+                        >
+                          {reg.score}%
+                        </span>
+                      )}
                     </div>
-                    {check && (
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded font-bold ${
-                          check.status === "passed"
-                            ? "bg-green-100 text-green-700"
-                            : check.status === "failed"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {check.similarityPercentage}%
-                      </span>
-                    )}
+                    <div className="mt-2 text-[10px] text-gray-400 text-right">
+                      {new Date(reg.thesisSubmittedAt).toLocaleDateString(
+                        "vi-VN"
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
+            {submissions.length === 0 && !loading && (
+              <div className="p-8 text-center text-gray-400 text-sm">
+                Chưa có bài nộp nào.
+              </div>
+            )}
           </div>
         </div>
 
         {/* Detail Panel */}
         <div className="lg:col-span-2 space-y-6">
-          {selectedStudentId ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex justify-between items-start mb-6">
+          {selectedReg ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-full flex flex-col">
+              <div className="flex justify-between items-start mb-6 pb-6 border-b border-gray-100">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">
-                    {getStudent(selectedStudentId)?.name}
+                    {selectedReg.student?.name}
                   </h3>
                   <p className="text-gray-500 text-sm">
-                    MSSV: {getStudent(selectedStudentId)?.code}
+                    MSSV: {selectedReg.student?.code} - Lớp:{" "}
+                    {selectedReg.student?.class}
                   </p>
                 </div>
-                {getCheck(selectedStudentId) ? (
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">
-                      Lần kiểm tra gần nhất
-                    </p>
-                    <p className="font-medium">
-                      {getCheck(selectedStudentId)?.checkDate}
-                    </p>
+                <div
+                  className={`px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 ${
+                    selectedReg.status === "defense_ready" ||
+                    selectedReg.status === "defense_registered"
+                      ? "bg-green-100 text-green-700"
+                      : selectedReg.status === "thesis_rejected"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-indigo-100 text-indigo-700"
+                  }`}
+                >
+                  {selectedReg.status === "defense_ready" ||
+                  selectedReg.status === "defense_registered" ? (
+                    <CheckCircle size={16} />
+                  ) : selectedReg.status === "thesis_rejected" ? (
+                    <XCircle size={16} />
+                  ) : (
+                    <Clock size={16} />
+                  )}
+                  {selectedReg.status === "defense_ready" ||
+                  selectedReg.status === "defense_registered"
+                    ? "Đủ điều kiện bảo vệ"
+                    : selectedReg.status === "thesis_rejected"
+                    ? "Không đạt"
+                    : "Chờ rà soát"}
+                </div>
+              </div>
+
+              {/* Links Section */}
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 group hover:border-indigo-300 transition-colors">
+                  <div className="flex items-center gap-3 mb-2">
+                    <FileText className="text-indigo-600" />
+                    <span className="font-bold text-gray-700 text-sm">
+                      File Báo cáo
+                    </span>
                   </div>
-                ) : (
-                  <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold">
-                    Chưa kiểm tra
-                  </span>
-                )}
+                  {selectedReg.thesisFileUrl ? (
+                    <a
+                      href={selectedReg.thesisFileUrl}
+                      target="_blank"
+                      className="text-sm text-blue-600 hover:underline flex items-center gap-1 break-all"
+                    >
+                      {selectedReg.thesisFileUrl} <ExternalLink size={12} />
+                    </a>
+                  ) : (
+                    <span className="text-sm text-gray-400 italic">
+                      Chưa nộp
+                    </span>
+                  )}
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 group hover:border-purple-300 transition-colors">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Monitor className="text-purple-600" />
+                    <span className="font-bold text-gray-700 text-sm">
+                      Source Code
+                    </span>
+                  </div>
+                  {selectedReg.codeLink ? (
+                    <a
+                      href={selectedReg.codeLink}
+                      target="_blank"
+                      className="text-sm text-blue-600 hover:underline flex items-center gap-1 break-all"
+                    >
+                      {selectedReg.codeLink} <ExternalLink size={12} />
+                    </a>
+                  ) : (
+                    <span className="text-sm text-gray-400 italic">
+                      Chưa nộp
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Action Area */}
-              {!getCheck(selectedStudentId) ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                  <FileText className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                  <p className="text-gray-500 mb-4">
-                    Chưa có dữ liệu kiểm tra đạo văn cho sinh viên này.
-                  </p>
+              <div className="mt-auto bg-indigo-50/50 rounded-xl p-6 border border-indigo-100">
+                <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <ShieldCheck className="text-indigo-600" /> Đánh giá & Kết
+                  luận
+                </h4>
+
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-1/3">
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Tỷ lệ trùng lặp (%)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        placeholder="0"
+                        value={similarityScore}
+                        onChange={(e) => setSimilarityScore(e.target.value)}
+                      />
+                      <span className="absolute right-3 top-2 text-gray-500 font-bold">
+                        %
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm text-gray-500 italic mt-6">
+                      * Tỷ lệ {">"} 20% thường coi là không đạt. Nhập kết quả từ
+                      phần mềm kiểm tra (Turnitin, etc).
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4 border-t border-indigo-200">
                   <button
-                    onClick={() => handleCheckPlagiarism(selectedStudentId)}
-                    disabled={isScanning}
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
+                    onClick={() => handleUpdateStatus("thesis_rejected")}
+                    disabled={evaluating}
+                    className="flex-1 py-3 bg-white border-2 border-red-500 text-red-600 rounded-xl font-bold hover:bg-red-50 transition flex justify-center items-center gap-2"
                   >
-                    {isScanning ? (
-                      <>
-                        <RotateCw className="animate-spin mr-2" size={18} />{" "}
-                        Đang quét...
-                      </>
-                    ) : (
-                      <>
-                        <Scan className="mr-2" size={18} /> Kiểm tra ngay
-                      </>
-                    )}
+                    <XCircle size={20} /> Không Đạt
+                  </button>
+                  <button
+                    onClick={() => handleUpdateStatus("defense_ready")}
+                    disabled={evaluating}
+                    className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition flex justify-center items-center gap-2"
+                  >
+                    <CheckCircle size={20} /> Đạt - Cho Phép Bảo Vệ
                   </button>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Results Card */}
-                  <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div
-                        className={`p-4 rounded-full ${
-                          (getCheck(selectedStudentId)?.similarityPercentage ||
-                            0) > 20
-                            ? "bg-red-100 text-red-600"
-                            : "bg-green-100 text-green-600"
-                        }`}
-                      >
-                        <span className="text-2xl font-bold">
-                          {getCheck(selectedStudentId)?.similarityPercentage}%
-                        </span>
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-800">
-                          Kết quả trùng lặp
-                        </h4>
-                        <a
-                          href="#"
-                          className="text-blue-600 text-sm hover:underline"
-                        >
-                          Xem báo cáo chi tiết
-                        </a>
-                      </div>
-                    </div>
-
-                    {/* Simulation Progress if Re-running */}
-                    {isScanning && (
-                      <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-                        <div
-                          className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                          style={{ width: `${scanProgress}%` }}
-                        ></div>
-                      </div>
-                    )}
-
-                    <div className="mt-4 flex gap-2">
-                      <button
-                        onClick={() => handleCheckPlagiarism(selectedStudentId)}
-                        disabled={isScanning}
-                        className="text-sm flex items-center gap-1 text-gray-600 hover:text-blue-600"
-                      >
-                        <RotateCw size={14} /> Quét lại
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Review Form */}
-                  <div className="border-t border-gray-100 pt-6">
-                    <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                      <FileText size={18} /> Đánh giá của GVHD
-                    </h4>
-                    <div className="space-y-4">
-                      <textarea
-                        className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                        rows={3}
-                        placeholder="Nhập nhận xét về kết quả kiểm tra..."
-                        value={feedback}
-                        onChange={(e) => setFeedback(e.target.value)}
-                      />
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() =>
-                            handleUpdateStatus(
-                              getCheck(selectedStudentId)!.id,
-                              "passed"
-                            )
-                          }
-                          className={`flex-1 py-2 rounded-lg font-medium flex justify-center items-center gap-2 transition ${
-                            getCheck(selectedStudentId)?.status === "passed"
-                              ? "bg-green-600 text-white"
-                              : "bg-white border border-green-600 text-green-600 hover:bg-green-50"
-                          }`}
-                        >
-                          <CheckCircle size={18} /> Đạt yêu cầu
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleUpdateStatus(
-                              getCheck(selectedStudentId)!.id,
-                              "failed"
-                            )
-                          }
-                          className={`flex-1 py-2 rounded-lg font-medium flex justify-center items-center gap-2 transition ${
-                            getCheck(selectedStudentId)?.status === "failed"
-                              ? "bg-red-600 text-white"
-                              : "bg-white border border-red-600 text-red-600 hover:bg-red-50"
-                          }`}
-                        >
-                          <XCircle size={18} /> Không đạt
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400 p-8 border-2 border-dashed border-gray-200 rounded-xl">
-              <Users className="w-16 h-16 mb-4 opacity-50" />
-              <p>Chọn sinh viên để rà soát đạo văn</p>
+            <div className="h-full flex flex-col items-center justify-center text-gray-400 p-8 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50">
+              <Users className="w-16 h-16 mb-4 opacity-30" />
+              <p className="text-lg">
+                Chọn sinh viên từ danh sách bên trái để rà soát.
+              </p>
             </div>
           )}
         </div>

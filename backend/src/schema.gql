@@ -33,6 +33,38 @@ input CreateCouncilInput {
   topicIds: [String!]
 }
 
+input CreateProgressReportInput {
+  content: String!
+  fileUrl: String
+  planNext: String!
+  registrationId: String!
+  title: String!
+}
+
+input CreateRegistrationInput {
+  studentId: String!
+  teacherId: String!
+  topicId: String!
+}
+
+input CreateTimelineInput {
+  description: String
+  dueDate: String
+  milestone: String!
+  registrationId: String!
+}
+
+input CreateTopicInput {
+  description: String
+  maxStudents: Int!
+  periodId: String!
+  requirements: String
+  specialization: String!
+  studyReferences: [String!]
+  teacherId: String!
+  title: String!
+}
+
 type FormTemplate {
   description: String
   fileUrl: String!
@@ -54,21 +86,36 @@ type Mutation {
   createCouncil(createCouncilInput: CreateCouncilInput!): Council!
   createFormTemplate(description: String!, fileUrl: String!, name: String!, type: String!): FormTemplate!
   createNotification(content: String, date: String, isRead: Boolean, message: String, title: String!, type: String, userId: String): Notification!
+  createProgressReport(input: CreateProgressReportInput!): ProgressReport!
   createStudent(className: String, code: String!, creditsAccumulated: Float, email: String!, gpa: Float, major: String, name: String!, phone: String): Student!
   createTeacher(code: String!, currentTheses: Int, dateOfBirth: String, email: String!, gender: String, maxTheses: Int, name: String!, phone: String, specialization: String, title: String, titleCoefficient: Float): Teacher!
   createThesisPeriod(academicYear: String!, endDate: String!, maxGroupSize: Int, milestones: [MilestoneInput!], name: String!, startDate: String!): ThesisPeriod!
+  createTimeline(input: CreateTimelineInput!): Timeline!
+  createTopic(createTopicInput: CreateTopicInput!): Topic!
   deleteCouncil(id: ID!): Council!
   deleteFormTemplate(id: String!): Boolean!
   deleteNotification(id: ID!): Boolean!
   deleteStudent(id: String!): Boolean!
   deleteTeacher(id: ID!): Boolean!
   deleteThesisPeriod(id: String!): Boolean!
+  deleteTimeline(id: String!): Boolean!
+  deleteTopic(id: String!): Boolean!
+  registerForDefense(registrationId: String!): ThesisRegistration!
+  registerTopic(createRegistrationInput: CreateRegistrationInput!): ThesisRegistration!
+  reviewOutline(feedback: String!, registrationId: String!, status: String!): ThesisRegistration!
+  reviewThesis(registrationId: String!, score: Float, status: String!): ThesisRegistration!
+  submitOutline(fileUrl: String!, registrationId: String!): ThesisRegistration!
+  submitThesis(codeLink: String, fileUrl: String!, registrationId: String!): ThesisRegistration!
   updateCouncil(updateCouncilInput: UpdateCouncilInput!): Council!
   updateFormTemplate(description: String, fileUrl: String, id: String!, name: String, type: String): FormTemplate!
   updateNotification(content: String, date: String, id: ID!, isRead: Boolean, message: String, title: String, type: String, userId: String): Notification!
+  updateProgressReportStatus(input: UpdateProgressReportStatusInput!): ProgressReport!
   updateStudent(className: String, code: String, creditsAccumulated: Float, email: String, gpa: Float, id: String!, major: String, name: String, phone: String): Student!
   updateTeacher(code: String, currentTheses: Int, dateOfBirth: String, email: String, gender: String, id: ID!, maxTheses: Int, name: String, phone: String, specialization: String, title: String, titleCoefficient: Float): Teacher!
   updateThesisPeriod(academicYear: String, endDate: String, id: String!, maxGroupSize: Int, milestones: [MilestoneInput!], name: String, startDate: String, status: String): ThesisPeriod!
+  updateTimeline(input: UpdateTimelineInput!): Timeline!
+  updateTimelineStatus(input: UpdateTimelineStatusInput!): Timeline!
+  updateTopic(id: String!, updateTopicInput: UpdateTopicInput!): Topic!
 }
 
 type Notification {
@@ -91,19 +138,53 @@ type PeriodMilestone {
   type: String!
 }
 
+type ProgressReport {
+  content: String!
+  feedback: String
+  fileUrl: String
+  id: ID!
+  planNext: String!
+  registrationId: String!
+  status: String!
+  submittedAt: String!
+  title: String!
+}
+
 type Query {
   council(id: ID!): Council!
   councils: [Council!]!
   formTemplate(id: String!): FormTemplate
   formTemplates: [FormTemplate!]!
+  getAllRegistrations: [ThesisRegistration!]!
+  myProgressReports(registrationId: String!): [ProgressReport!]!
+  myRegistrations(studentId: String!): [ThesisRegistration!]!
   notification(id: ID!): Notification
   notifications: [Notification!]!
   student(id: String!): Student!
   students: [Student!]!
+  studentsWithoutTopic(search: String): [Student!]!
   teacher(id: ID!): Teacher
+  teacherRegistrations(teacherId: String!): [ThesisRegistration!]!
+  teacherTopics(teacherId: String!): [Topic!]!
   teachers: [Teacher!]!
   thesisPeriod(id: String!): ThesisPeriod
   thesisPeriods: [ThesisPeriod!]!
+  timelines(registrationId: String!): [Timeline!]!
+  topic(id: ID!): Topic
+  topics: [Topic!]!
+}
+
+type RegistrationStudent {
+  class: String
+  code: String!
+  id: ID!
+  name: String!
+}
+
+type RegistrationTopic {
+  code: String
+  id: ID!
+  title: String!
 }
 
 type Student {
@@ -146,6 +227,52 @@ type ThesisPeriod {
   status: String!
 }
 
+type ThesisRegistration {
+  codeLink: String
+  id: ID!
+  outlineFeedback: String
+  outlineFileUrl: String
+  outlineSubmittedAt: String
+  registeredAt: String!
+  score: Float
+  status: String!
+  student: RegistrationStudent
+  studentId: String!
+  teacherId: String!
+  thesisFileUrl: String
+  thesisSubmittedAt: String
+  topic: RegistrationTopic
+  topicId: String!
+}
+
+type Timeline {
+  completedAt: String
+  description: String
+  dueDate: String
+  feedback: String
+  id: ID!
+  milestone: String!
+  registrationId: String!
+  status: String!
+}
+
+type Topic {
+  approverId: String
+  code: String
+  createdAt: String!
+  currentStudents: Int
+  description: String
+  id: ID!
+  maxStudents: Int
+  periodId: String!
+  requirements: String
+  specialization: String
+  status: String!
+  studyReferences: [String!]
+  teacherId: String!
+  title: String!
+}
+
 input UpdateCouncilInput {
   commissionerId: String
   date: String
@@ -160,4 +287,35 @@ input UpdateCouncilInput {
   status: String
   time: String
   topicIds: [String!]
+}
+
+input UpdateProgressReportStatusInput {
+  feedback: String
+  id: String!
+  status: String!
+}
+
+input UpdateTimelineInput {
+  description: String
+  dueDate: String
+  feedback: String
+  id: String!
+  milestone: String
+}
+
+input UpdateTimelineStatusInput {
+  id: String!
+  status: String!
+}
+
+input UpdateTopicInput {
+  description: String
+  maxStudents: Int
+  periodId: String
+  requirements: String
+  specialization: String
+  status: String
+  studyReferences: [String!]
+  teacherId: String
+  title: String
 }

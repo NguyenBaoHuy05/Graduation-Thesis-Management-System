@@ -1,29 +1,135 @@
 "use client";
 import React, { useState } from "react";
-import {
-  mockRegistrations,
-  mockTimelines,
-  mockTopics,
-  mockProgressReports,
-  ProgressReport,
-} from "../../data/mockData";
+import { gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   TrendingUp,
   CheckCircle,
   Clock,
   AlertTriangle,
-  Upload,
   Link as LinkIcon,
   Plus,
-  FileText,
   History,
 } from "lucide-react";
+// Remove mockRegistrations, mockTopics import
+// Keep ProgressReport interface if needed, or define locally
+interface ProgressReport {
+  id: string;
+  registrationId: string;
+  title: string;
+  content: string;
+  planNext: string;
+  fileUrl?: string;
+  submittedAt: string;
+  status: "pending" | "approved" | "rejected";
+  feedback?: string;
+}
 
 const ThesisProgress: React.FC = () => {
   const { user } = useAuth();
-  const [thesisFile, setThesisFile] = useState<File | null>(null);
-  const [codeLink, setCodeLink] = useState("");
+
+  // Fetch active period for deadlines
+  const GET_ACTIVE_PERIOD_PROGRESS = gql`
+    query GetActivePeriodProgress {
+      thesisPeriods {
+        id
+        status
+        milestones {
+          name
+          startDate
+          endDate
+        }
+      }
+    }
+  `;
+
+  const GET_MY_PROGRESS = gql`
+    query GetMyProgress($studentId: String!) {
+      myRegistrations(studentId: $studentId) {
+        id
+        status
+        topic {
+          id
+          title
+          code
+        }
+      }
+    }
+  `;
+
+  const GET_MY_PROGRESS_REPORTS = gql`
+    query GetMyProgressReports($registrationId: String!) {
+      myProgressReports(registrationId: $registrationId) {
+        id
+        title
+        content
+        planNext
+        submittedAt
+        status
+        feedback
+        fileUrl
+      }
+    }
+  `;
+
+  const CREATE_PROGRESS_REPORT = gql`
+    mutation CreateProgressReport($input: CreateProgressReportInput!) {
+      createProgressReport(input: $input) {
+        id
+        title
+        status
+        submittedAt
+      }
+    }
+  `;
+
+  const GET_TIMELINES = gql`
+    query GetTimelines($registrationId: String!) {
+      timelines(registrationId: $registrationId) {
+        id
+        milestone
+        description
+        dueDate
+        status
+        completedAt
+      }
+    }
+  `;
+
+  const { data: periodData } = useQuery<any>(GET_ACTIVE_PERIOD_PROGRESS);
+  const activePeriod = periodData?.thesisPeriods?.find(
+    (p: any) => p.status === "active"
+  );
+
+  const { data: progressData, loading: progressLoading } = useQuery<any>(
+    GET_MY_PROGRESS,
+    {
+      variables: { studentId: user?.profileId },
+      skip: !user?.profileId,
+    }
+  );
+
+  const myRegistration = progressData?.myRegistrations?.[0];
+  const myTopic = myRegistration?.topic;
+
+  const { data: reportsData, refetch: refetchReports } = useQuery<any>(
+    GET_MY_PROGRESS_REPORTS,
+    {
+      variables: { registrationId: myRegistration?.id },
+      skip: !myRegistration?.id,
+    }
+  );
+
+  const { data: timelineData } = useQuery<{ timelines: any[] }>(GET_TIMELINES, {
+    variables: { registrationId: myRegistration?.id },
+    skip: !myRegistration?.id,
+  });
+
+  const [createProgressReport] = useMutation(CREATE_PROGRESS_REPORT);
+
+  const reports: ProgressReport[] = reportsData?.myProgressReports || [];
+  const myTimelines = timelineData?.timelines || [];
 
   // Progress Reporting State
   const [showReportForm, setShowReportForm] = useState(false);
@@ -33,64 +139,42 @@ const ThesisProgress: React.FC = () => {
     planNext: "",
     fileLink: "",
   });
-  // Local state to simulate adding new reports
-  const [reports, setReports] = useState<ProgressReport[]>([]);
 
-  // Initialize data
-  const myRegistration = mockRegistrations.find(
-    (r) => r.studentId === user?.profileId
-  );
-
-  // Load initial reports from mock data
-  React.useEffect(() => {
-    if (myRegistration) {
-      const existingReports = mockProgressReports.filter(
-        (pr) => pr.registrationId === myRegistration.id
-      );
-      setReports(existingReports);
-    }
-  }, [myRegistration]);
-
-  const myTopic = myRegistration
-    ? mockTopics.find((t) => t.id === myRegistration.topicId)
-    : null;
-  const myTimelines = myRegistration
-    ? mockTimelines.filter((t) => t.registrationId === myRegistration.id)
-    : [];
-
-  const handleSubmitThesis = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (thesisFile) {
-      alert("Nộp khóa luận thành công! (Demo mode)");
-      setThesisFile(null);
-      setCodeLink("");
-    }
-  };
-
-  const handleCreateReport = (e: React.FormEvent) => {
+  const handleCreateReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!myRegistration) return;
+    if (!["in_progress", "outline_approved"].includes(myRegistration.status)) {
+      alert(
+        "Bạn chỉ có thể nộp báo cáo khi đề tài đang thực hiện hoặc đã duyệt đề cương."
+      );
+      return;
+    }
 
     if (!reportData.title || !reportData.content || !reportData.planNext) {
       alert("Vui lòng điền đầy đủ thông tin báo cáo.");
       return;
     }
 
-    const newReport: ProgressReport = {
-      id: `pr${Date.now()}`,
-      registrationId: myRegistration.id,
-      title: reportData.title,
-      content: reportData.content,
-      planNext: reportData.planNext,
-      fileUrl: reportData.fileLink, // Added fileUrl
-      submittedAt: new Date().toISOString().split("T")[0],
-      status: "pending",
-    };
-
-    setReports([newReport, ...reports]);
-    setReportData({ title: "", content: "", planNext: "", fileLink: "" });
-    setShowReportForm(false);
-    alert("Nộp báo cáo tiến độ thành công!");
+    try {
+      await createProgressReport({
+        variables: {
+          input: {
+            registrationId: myRegistration.id,
+            title: reportData.title,
+            content: reportData.content,
+            planNext: reportData.planNext,
+            fileUrl: reportData.fileLink || undefined,
+          },
+        },
+      });
+      alert("Nộp báo cáo tiến độ thành công!");
+      setReportData({ title: "", content: "", planNext: "", fileLink: "" });
+      setShowReportForm(false);
+      refetchReports();
+    } catch (err: any) {
+      alert("Lỗi khi nộp báo cáo: " + err.message);
+      console.log(err);
+    }
   };
 
   if (!myRegistration) {
@@ -119,121 +203,157 @@ const ThesisProgress: React.FC = () => {
     myRegistration.status === "completed";
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="bg-purple-100 p-2 rounded-lg">
-            <TrendingUp size={24} className="text-purple-600" />
+    <div className="max-w-6xl mx-auto space-y-8 pb-10">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+            <TrendingUp size={28} className="text-indigo-600" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-800">
               Theo dõi tiến độ
             </h2>
             <p className="text-sm text-gray-500">
-              Cập nhật và theo dõi tiến độ thực hiện
+              Quản lý và báo cáo tiến độ thực hiện khóa luận
             </p>
           </div>
         </div>
+      </div>
 
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 rounded-xl p-5 mb-6">
-          <h3 className="font-bold text-gray-900 mb-2">{myTopic?.title}</h3>
-          <div className="flex items-center space-x-4 text-sm">
-            <span className="px-3 py-1 bg-white rounded-full font-medium text-purple-700">
-              {myTopic?.code}
+      {/* Topic Card */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 to-purple-700 rounded-2xl shadow-lg text-white p-6 md:p-8">
+        <div className="absolute top-0 right-0 p-4 opacity-10">
+          <TrendingUp size={120} />
+        </div>
+        <div className="relative z-10">
+          <div className="flex items-center space-x-3 mb-2 opacity-90">
+            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-semibold backdrop-blur-sm border border-white/10">
+              {myTopic?.code || "Chưa có mã"}
             </span>
+            <span className="text-sm font-medium tracking-wide uppercase">
+              Đề tài hiện tại
+            </span>
+          </div>
+          <h3 className="text-2xl md:text-3xl font-bold mb-4 leading-tight">
+            {myTopic?.title}
+          </h3>
+          <div className="flex flex-wrap items-center gap-3">
             {myRegistration.status === "in_progress" && (
-              <span className="px-3 py-1 bg-purple-600 text-white rounded-full text-xs font-medium">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 border border-green-400/30 rounded-lg text-sm font-medium text-green-100">
+                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                 Đang thực hiện
               </span>
             )}
             {isSubmitted && (
-              <span className="px-3 py-1 bg-green-600 text-white rounded-full text-xs font-medium">
+              <span className="px-3 py-1.5 bg-blue-500/20 border border-blue-400/30 rounded-lg text-sm font-medium text-blue-100">
                 Đã nộp
               </span>
             )}
           </div>
         </div>
+      </div>
 
-        {/* --- Periodic Progress Reports Section --- */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-gray-900 text-lg flex items-center gap-2">
-              <History size={20} className="text-gray-500" />
-              Báo cáo định kỳ
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Periodic Reports */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <History className="text-indigo-600" size={20} />
+              Lịch sử báo cáo
             </h3>
             <button
               onClick={() => setShowReportForm(!showReportForm)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+              disabled={
+                !["in_progress", "outline_approved"].includes(
+                  myRegistration.status
+                )
+              }
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm ${
+                ["in_progress", "outline_approved"].includes(
+                  myRegistration.status
+                )
+                  ? "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md hover:-translate-y-0.5"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              }`}
             >
-              {showReportForm ? "Hủy báo cáo" : "Tạo báo cáo mới"}
-              {!showReportForm && <Plus size={16} />}
+              {showReportForm ? "Hủy báo cáo" : "Viết báo cáo mới"}
+              {!showReportForm && <Plus size={18} />}
             </button>
           </div>
 
+          {/* Report Form */}
           {showReportForm && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6 animate-in fade-in zoom-in-95 duration-200">
-              <h4 className="font-bold text-gray-900 mb-4">
-                Nộp báo cáo tiến độ
+            <div className="bg-white border border-indigo-100 rounded-2xl shadow-lg p-6 animate-in slide-in-from-top-4 duration-300">
+              <h4 className="font-bold text-gray-800 mb-4 text-lg">
+                Nộp báo cáo tiến độ mới
               </h4>
-              <form onSubmit={handleCreateReport} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+              <form onSubmit={handleCreateReport} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
                     Tiêu đề báo cáo
                   </label>
                   <input
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
-                    placeholder="Ví dụ: Báo cáo tuần 5"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    placeholder="Ví dụ: Báo cáo tuần 5 - Xây dựng cơ sở dữ liệu"
                     value={reportData.title}
                     onChange={(e) =>
                       setReportData({ ...reportData, title: e.target.value })
                     }
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Công việc đã làm & Vấn đề gặp phải
-                  </label>
-                  <textarea
-                    required
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
-                    placeholder="Mô tả chi tiết..."
-                    value={reportData.content}
-                    onChange={(e) =>
-                      setReportData({ ...reportData, content: e.target.value })
-                    }
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Công việc đã làm
+                    </label>
+                    <textarea
+                      required
+                      rows={4}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
+                      placeholder="- Đã hoàn thành ERD..."
+                      value={reportData.content}
+                      onChange={(e) =>
+                        setReportData({
+                          ...reportData,
+                          content: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Kế hoạch tiếp theo
+                    </label>
+                    <textarea
+                      required
+                      rows={4}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
+                      placeholder="- Code API..."
+                      value={reportData.planNext}
+                      onChange={(e) =>
+                        setReportData({
+                          ...reportData,
+                          planNext: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Kế hoạch tiếp theo
-                  </label>
-                  <textarea
-                    required
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
-                    placeholder="Dự định làm gì trong tuần tới..."
-                    value={reportData.planNext}
-                    onChange={(e) =>
-                      setReportData({ ...reportData, planNext: e.target.value })
-                    }
-                  />
-                </div>
-
-                {/* New File Link Input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Link tài liệu minh chứng (nếu có)
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Link tài liệu (Google Drive/Github)
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <LinkIcon size={16} className="text-gray-400" />
-                    </div>
+                    <LinkIcon
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={18}
+                    />
                     <input
                       type="url"
-                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
-                      placeholder="https://drive.google.com/..."
+                      className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                      placeholder="https://..."
                       value={reportData.fileLink}
                       onChange={(e) =>
                         setReportData({
@@ -244,317 +364,157 @@ const ThesisProgress: React.FC = () => {
                     />
                   </div>
                 </div>
-
                 <div className="flex justify-end pt-2">
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+                    className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold shadow-lg shadow-indigo-200 hover:shadow-indigo-300 hover:-translate-y-0.5 transition-all duration-200"
                   >
-                    Nộp báo cáo
+                    Gửi báo cáo
                   </button>
                 </div>
               </form>
             </div>
           )}
 
-          <div className="space-y-3">
+          {/* Reports Timeline List */}
+          <div className="relative pl-8 border-l-2 border-indigo-100 space-y-8 py-2">
             {reports.length > 0 ? (
-              reports.map((report) => (
+              reports.map((report, index) => (
                 <div
                   key={report.id}
-                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition"
+                  className="relative animate-in slide-in-from-left-4 duration-500"
+                  style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h5 className="font-semibold text-gray-800">
-                        {report.title}
-                      </h5>
-                      <p className="text-xs text-gray-500">
-                        {report.submittedAt}
-                      </p>
-                    </div>
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium capitalize border ${
-                        report.status === "approved"
-                          ? "bg-green-50 text-green-700 border-green-200"
+                  {/* Dot */}
+                  <div className="absolute -left-[41px] top-4 w-5 h-5 rounded-full border-4 border-indigo-50 bg-indigo-600" />
+
+                  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all group">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div>
+                        <h5 className="text-lg font-bold text-gray-800 group-hover:text-indigo-700 transition-colors">
+                          {report.title}
+                        </h5>
+                        <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5 mt-1">
+                          <Clock size={14} />
+                          {new Date(report.submittedAt).toLocaleDateString(
+                            "vi-VN",
+                            {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            }
+                          )}
+                        </p>
+                      </div>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold capitalize border ${
+                          report.status === "approved"
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : report.status === "rejected"
+                            ? "bg-red-50 text-red-700 border-red-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        {report.status === "approved"
+                          ? "Đã duyệt"
                           : report.status === "rejected"
-                          ? "bg-red-50 text-red-700 border-red-200"
-                          : "bg-yellow-50 text-yellow-700 border-yellow-200"
-                      }`}
-                    >
-                      {report.status === "approved"
-                        ? "Đã duyệt"
-                        : report.status === "rejected"
-                        ? "Bị từ chối"
-                        : "Chờ duyệt"}
-                    </span>
-                  </div>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <p>
-                      <span className="font-medium text-gray-700">Đã làm:</span>{" "}
-                      {report.content}
-                    </p>
-                    <p>
-                      <span className="font-medium text-gray-700">
-                        Kế hoạch:
-                      </span>{" "}
-                      {report.planNext}
-                    </p>
-                    {report.fileUrl && (
-                      <p className="flex items-center gap-1 text-blue-600">
-                        <LinkIcon size={14} />
-                        <a
-                          href={report.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="hover:underline"
-                        >
-                          Xem tài liệu đính kèm
-                        </a>
-                      </p>
+                          ? "Yêu cầu sửa"
+                          : "Chờ duyệt"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 bg-gray-50/50 p-4 rounded-xl">
+                      <div>
+                        <strong className="text-gray-900 block mb-1">
+                          Đã thực hiện:
+                        </strong>
+                        <p className="whitespace-pre-wrap">{report.content}</p>
+                      </div>
+                      <div>
+                        <strong className="text-gray-900 block mb-1">
+                          Kế hoạch tiếp theo:
+                        </strong>
+                        <p className="whitespace-pre-wrap">{report.planNext}</p>
+                      </div>
+                    </div>
+
+                    {(report.fileUrl || report.feedback) && (
+                      <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-3">
+                        {report.fileUrl && (
+                          <a
+                            href={report.fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:underline w-fit"
+                          >
+                            <LinkIcon size={16} /> Xem tài liệu đính kèm
+                          </a>
+                        )}
+                        {report.feedback && (
+                          <div className="bg-green-50 border border-green-100 px-4 py-3 rounded-xl">
+                            <p className="text-xs font-bold text-green-800 mb-1 uppercase tracking-wider">
+                              Nhận xét của giảng viên
+                            </p>
+                            <p className="text-sm text-gray-700">
+                              {report.feedback}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
-                  {report.feedback && (
-                    <div className="mt-3 bg-gray-50 p-2 rounded text-sm text-gray-600">
-                      <span className="font-medium">GV nhận xét:</span>{" "}
-                      {report.feedback}
-                    </div>
-                  )}
                 </div>
               ))
             ) : (
-              <div className="text-center py-6 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                <p className="text-gray-500 text-sm">Chưa có báo cáo nào.</p>
+              <div className="ml-4 p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                <History className="mx-auto text-gray-300 mb-2" size={32} />
+                <p className="text-gray-500">
+                  Chưa có báo cáo nào được ghi nhận.
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        <h3 className="font-semibold text-gray-900 text-lg mb-4">
-          Timeline thực hiện
-        </h3>
+        {/* Right Column: Timeline & Stats */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-6">
+            <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <CheckCircle className="text-green-600" size={20} />
+              Mốc thời gian
+            </h3>
 
-        <div className="relative">
-          {myTimelines.map((timeline, index) => {
-            const isLast = index === myTimelines.length - 1;
-            const isCompleted = timeline.status === "completed";
-            const isOverdue = timeline.status === "overdue";
-
-            return (
-              <div key={timeline.id} className="flex">
-                <div className="flex flex-col items-center mr-4">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      isCompleted
-                        ? "bg-green-500"
-                        : isOverdue
-                        ? "bg-red-500"
-                        : "bg-gray-300"
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <CheckCircle size={20} className="text-white" />
-                    ) : (
-                      <Clock size={20} className="text-white" />
-                    )}
-                  </div>
-                  {!isLast && (
+            {myTimelines.length > 0 ? (
+              <div className="space-y-6 relative pl-4 border-l-2 border-gray-100">
+                {/* Render timelines basically if needed, refined style */}
+                {myTimelines.map((tl: any) => (
+                  <div key={tl.id} className="relative pl-4">
                     <div
-                      className={`w-0.5 h-full min-h-[60px] ${
-                        isCompleted ? "bg-green-300" : "bg-gray-300"
+                      className={`absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2 border-white ring-1 ${
+                        tl.status === "completed"
+                          ? "bg-green-500 ring-green-200"
+                          : "bg-gray-300 ring-gray-200"
                       }`}
                     />
-                  )}
-                </div>
-
-                <div className="flex-1 pb-8">
-                  <div
-                    className={`rounded-xl p-4 ${
-                      isCompleted
-                        ? "bg-green-50 border border-green-200"
-                        : isOverdue
-                        ? "bg-red-50 border border-red-200"
-                        : "bg-gray-50 border border-gray-200"
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-semibold text-gray-900">
-                        {timeline.milestone}
-                      </h4>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          isCompleted
-                            ? "bg-green-100 text-green-700"
-                            : isOverdue
-                            ? "bg-red-100 text-red-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {isCompleted
-                          ? "Hoàn thành"
-                          : isOverdue
-                          ? "Quá hạn"
-                          : "Đang thực hiện"}
-                      </span>
-                    </div>
-
-                    <p className="text-sm text-gray-600 mb-2">
-                      {timeline.description}
+                    <p className="text-sm font-semibold text-gray-800">
+                      {tl.milestone}
                     </p>
-
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>
-                        Hạn:{" "}
-                        {new Date(timeline.dueDate).toLocaleDateString("vi-VN")}
-                      </span>
-                      {timeline.completedAt && (
-                        <span className="text-green-600">
-                          Hoàn thành:{" "}
-                          {new Date(timeline.completedAt).toLocaleDateString(
-                            "vi-VN"
-                          )}
-                        </span>
-                      )}
-                    </div>
-
-                    {timeline.feedback && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <p className="text-xs font-medium text-gray-700 mb-1">
-                          Nhận xét của giáo viên:
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {timeline.feedback}
-                        </p>
-                      </div>
-                    )}
+                    <p className="text-xs text-gray-500 mb-1">{tl.dueDate}</p>
+                    <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                      {tl.status === "completed" ? "Hoàn thành" : "Đang chờ"}
+                    </span>
                   </div>
-                </div>
+                ))}
               </div>
-            );
-          })}
+            ) : (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                Chưa có mốc thời gian cụ thể.
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {canSubmitThesis && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">
-            Nộp khóa luận
-          </h3>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-blue-800">
-              <strong>Lưu ý:</strong> Vui lòng kiểm tra kỹ tài liệu trước khi
-              nộp. Sau khi nộp, bạn sẽ không thể chỉnh sửa.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmitThesis} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                File khóa luận (PDF)
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-                <Upload size={48} className="mx-auto text-gray-400 mb-3" />
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) =>
-                    e.target.files && setThesisFile(e.target.files[0])
-                  }
-                  className="hidden"
-                  id="thesis-file"
-                />
-                <label
-                  htmlFor="thesis-file"
-                  className="cursor-pointer text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Chọn file PDF
-                </label>
-                {thesisFile && (
-                  <p className="mt-2 text-sm text-gray-600">
-                    Đã chọn: {thesisFile.name}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Link source code (tùy chọn)
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <LinkIcon size={18} className="text-gray-400" />
-                </div>
-                <input
-                  type="url"
-                  value={codeLink}
-                  onChange={(e) => setCodeLink(e.target.value)}
-                  placeholder="https://github.com/username/repository"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={!thesisFile}
-              className="w-full py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-            >
-              Nộp khóa luận
-            </button>
-          </form>
-        </div>
-      )}
-
-      {isSubmitted && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-start space-x-3">
-            <CheckCircle
-              size={24}
-              className="text-green-600 flex-shrink-0 mt-1"
-            />
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Đã nộp khóa luận
-              </h3>
-              <div className="space-y-2 text-sm">
-                <p className="text-gray-600">
-                  <strong>Ngày nộp:</strong>{" "}
-                  {myRegistration.thesisSubmittedAt &&
-                    new Date(
-                      myRegistration.thesisSubmittedAt
-                    ).toLocaleDateString("vi-VN")}
-                </p>
-                {myRegistration.thesisNumber && (
-                  <p className="text-gray-600">
-                    <strong>Số thứ tự:</strong> {myRegistration.thesisNumber}
-                  </p>
-                )}
-                {myRegistration.codeLink && (
-                  <p className="text-gray-600">
-                    <strong>Source code:</strong>{" "}
-                    <a
-                      href={myRegistration.codeLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {myRegistration.codeLink}
-                    </a>
-                  </p>
-                )}
-                {myRegistration.status === "completed" &&
-                  myRegistration.score && (
-                    <p className="text-lg font-bold text-green-600 mt-3">
-                      Điểm: {myRegistration.score}/10
-                    </p>
-                  )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

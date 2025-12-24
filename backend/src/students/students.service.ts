@@ -76,4 +76,41 @@ export class StudentsService {
     if (error) throw error;
     return true;
   }
+
+  async findStudentsWithoutTopic(search?: string): Promise<Student[]> {
+    // 1. Get all students (optionally filtered by search)
+    let query = this.supabaseService.getClient().from('students').select('*');
+
+    if (search) {
+      query = query.or(
+        `name.ilike.%${search}%,code.ilike.%${search}%,email.ilike.%${search}%`,
+      );
+    }
+
+    const { data: students, error: studentError } = await query;
+    if (studentError) throw studentError;
+
+    // 2. Get all student IDs with "active" registrations
+    // statuses that mean "taken": registered, approved, in_progress, submitted, defending, completed
+    // statuses that mean "free": rejected, cancelled
+    const { data: registrations, error: regError } = await this.supabaseService
+      .getClient()
+      .from('thesis_registrations')
+      // @ts-ignore
+      .select('student_id')
+      .not('status', 'in', '("rejected","cancelled")');
+
+    if (regError) throw regError;
+
+    const registeredStudentIds = new Set(
+      registrations.map((r: any) => r.student_id),
+    );
+
+    // 3. Filter
+    const availableStudents = (students as any[]).filter(
+      (s) => !registeredStudentIds.has(s.id),
+    );
+
+    return rowsToStudents(availableStudents);
+  }
 }

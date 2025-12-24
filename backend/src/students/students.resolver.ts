@@ -16,6 +16,13 @@ export class StudentsResolver {
     return this.studentsService.findOne(id);
   }
 
+  @Query(() => [Student])
+  async studentsWithoutTopic(
+    @Args('search', { nullable: true }) search?: string,
+  ): Promise<Student[]> {
+    return this.studentsService.findStudentsWithoutTopic(search);
+  }
+
   @Mutation(() => Student)
   async createStudent(
     @Args('code') code: string,
