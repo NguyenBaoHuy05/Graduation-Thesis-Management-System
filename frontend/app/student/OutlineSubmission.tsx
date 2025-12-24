@@ -1,461 +1,519 @@
 "use client";
-import React, { useState } from "react";
-import {
-  mockRegistrations,
-  mockTopics,
-  mockTeachers,
-  mockThesisPeriods,
-} from "../../data/mockData";
-import { useAuth } from "../../contexts/AuthContext";
+
+import { useState } from "react";
+import { gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
+import { useAuth } from "@/contexts/AuthContext";
+import FileUpload from "./components/FileUpload";
 import {
   FileText,
-  Upload,
   CheckCircle,
-  XCircle,
-  AlertCircle,
   Clock,
-  AlertTriangle,
+  AlertCircle,
+  X,
+  UploadCloud,
+  ChevronRight,
+  Send,
 } from "lucide-react";
 
-const OutlineSubmission: React.FC = () => {
+// --- GraphQL Operations ---
+const MY_REGISTRATIONS = gql`
+  query MyRegistrations($studentId: String!) {
+    myRegistrations(studentId: $studentId) {
+      id
+      topicId
+      status
+      outlineFileUrl
+      outlineSubmittedAt
+      outlineFeedback
+    }
+  }
+`;
+
+const SUBMIT_OUTLINE = gql`
+  mutation SubmitOutline($registrationId: String!, $fileUrl: String!) {
+    submitOutline(registrationId: $registrationId, fileUrl: $fileUrl) {
+      id
+      outlineFileUrl
+      outlineSubmittedAt
+    }
+  }
+`;
+
+export default function OutlineSubmission() {
   const { user } = useAuth();
-  const [outlineFile, setOutlineFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  const [submissionTime, setSubmissionTime] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [fileUrl, setFileUrl] = useState<string>("");
 
-  // In a real app, use SWR or React Query to fetch fresh data
-  const myRegistration = mockRegistrations.find(
-    (r) => r.studentId === user?.profileId
-  );
-  const myTopic = myRegistration
-    ? mockTopics.find((t) => t.id === myRegistration.topicId)
-    : null;
-  const myTeacher = myRegistration
-    ? mockTeachers.find((t) => t.id === myRegistration.teacherId)
-    : null;
+  const { data: regData, refetch } = useQuery<any>(MY_REGISTRATIONS, {
+    variables: { studentId: user?.profileId },
+    skip: !user?.profileId,
+  });
 
-  // Find active thesis period and submission milestone
-  // Assuming the user's topic belongs to the first active period or we find one matching
-  // For simplicty in mock, using the first active period
-  const activePeriod = mockThesisPeriods.find((p) => p.status === "active");
-  const submissionMilestone = activePeriod?.milestones.find(
-    (m) => m.name === "Nộp đề cương chi tiết" && m.type === "submission"
-  );
+  const registration = regData?.myRegistrations?.[0];
 
-  const checkSubmissionPeriod = () => {
-    if (!submissionMilestone)
-      return { isValid: false, message: "Không tìm thấy đợt nộp đề cương." };
+  // Mutation
+  const [submitOutline] = useMutation(SUBMIT_OUTLINE, {
+    onCompleted: () => {
+      alert("Nộp đề cương thành công!");
+      setShowForm(false);
+      setFileUrl("");
+      refetch();
+    },
+    onError: (err) => alert("Lỗi: " + err.message),
+  });
 
-    // For testing/mocking, simple string comparison might work if format is ISO YYYY-MM-DD
-    // But ideally parse dates
-    const now = new Date();
-    const startDate = new Date(submissionMilestone.startDate);
-    const endDate = new Date(submissionMilestone.endDate || "2099-12-31");
-    // Reset times for simpler date comparison or keep strict time
-    // Assuming mock dates are YYYY-MM-DD
+  const handleSubmit = () => {
+    if (!registration) return;
+    if (!fileUrl) {
+      alert("Vui lòng upload file trước.");
+      return;
+    }
 
-    if (now < startDate)
-      return {
-        isValid: false,
-        message: `Chưa đến thời gian nộp đề cương (Bắt đầu: ${submissionMilestone.startDate})`,
-      };
-    if (now > endDate)
-      return {
-        isValid: false,
-        message: `Đã hết hạn nộp đề cương (Hạn chót: ${submissionMilestone.endDate})`,
-      };
-
-    return { isValid: true, message: "" };
+    submitOutline({
+      variables: {
+        registrationId: registration.id,
+        fileUrl: fileUrl,
+      },
+    });
   };
 
-  const periodValidation = checkSubmissionPeriod();
+  const handleUploadComplete = (urls: string[]) => {
+    if (urls.length > 0) {
+      setFileUrl(urls[0]);
+    }
+  };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setErrorMessage(null);
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.type !== "application/pdf") {
-        setErrorMessage("Vui lòng chỉ chọn file định dạng PDF.");
-        return;
+  // Get Active Period for Milestones
+  const GET_ACTIVE_PERIOD = gql`
+    query GetActiveThesisPeriod {
+      thesisPeriods {
+        id
+        name
+        status
+        milestones {
+          id
+          name
+          startDate
+          endDate
+          type
+        }
       }
-      setOutlineFile(file);
     }
+  `;
+
+  const { data: periodData } = useQuery<any>(GET_ACTIVE_PERIOD);
+  const activePeriod = periodData?.thesisPeriods?.find(
+    (p: any) => p.status === "active"
+  );
+
+  // Find Outline Submission Milestone
+  const outlineMilestone = activePeriod?.milestones?.find((m: any) =>
+    m.name.toLowerCase().includes("đề cương")
+  );
+
+  const isSubmissionTime = () => {
+    if (!outlineMilestone) return true; // Fallback if no milestone found
+    const now = new Date();
+    const start = new Date(outlineMilestone.startDate);
+    const end = new Date(outlineMilestone.endDate);
+    // Set end date to end of day
+    end.setHours(23, 59, 59, 999);
+    return now >= start && now <= end;
   };
 
-  const handlePreSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!outlineFile) return;
+  const submissionAllowed = isSubmissionTime();
 
-    if (myRegistration?.outlineFileUrl) {
-      setShowOverwriteConfirm(true);
-    } else {
-      executeSubmit();
-    }
-  };
-
-  const executeSubmit = () => {
-    setShowOverwriteConfirm(false);
-    setIsSubmitting(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setShowSuccessPopup(true);
-      setSubmissionTime(new Date().toISOString());
-      setOutlineFile(null);
-    }, 1500);
-  };
-
-  if (!myRegistration) {
+  if (!registration) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="bg-yellow-100 p-4 rounded-full mb-4">
-            <AlertCircle size={48} className="text-yellow-600" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            Chưa đăng ký đề tài
-          </h3>
-          <p className="text-gray-600">
-            Bạn cần đăng ký đề tài trước khi nộp đề cương
-          </p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="bg-gray-50 p-4 rounded-full mb-4">
+          <AlertCircle size={40} className="text-gray-400" />
         </div>
+        <h3 className="text-xl font-bold text-gray-800 mb-2">
+          Chưa đăng ký đề tài
+        </h3>
+        <p className="text-gray-500 text-center max-w-md">
+          Bạn cần đăng ký đề tài khóa luận trước khi có thể nộp đề cương chi
+          tiết.
+        </p>
       </div>
     );
   }
 
-  // If period invalid, show error
-  if (!periodValidation.isValid) {
-    return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="bg-red-100 p-4 rounded-full mb-4">
-            <Clock size={48} className="text-red-600" />
+  // Determine status
+  let status = "pending";
+  if (registration.status === "outline_approved") status = "approved";
+  else if (registration.status === "outline_rejected") status = "rejected";
+  else if (registration.outlineFeedback) status = "rejected";
+
+  const isSubmitted = !!registration.outlineSubmittedAt;
+
+  // Render Status Badge
+  const renderStatusBadge = () => {
+    switch (status) {
+      case "approved":
+        return (
+          <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full font-bold text-sm">
+            <CheckCircle size={18} /> Đã Duyệt
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            Ngoài thời gian nộp
-          </h3>
-          <p className="text-gray-600 max-w-md">{periodValidation.message}</p>
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-500">
-            Thời gian quy định: {submissionMilestone?.startDate} đến{" "}
-            {submissionMilestone?.endDate}
+        );
+      case "rejected":
+        return (
+          <div className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-full font-bold text-sm">
+            <AlertCircle size={18} /> Yêu Cầu Sửa
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  const canSubmit =
-    myRegistration.status === "registered" ||
-    myRegistration.status === "outline_rejected" ||
-    myRegistration.status === "outline_pending"; // Allow re-submit while pending (overwrite)
-
-  // Determine display status based on simulation or current data
-  const effectiveStatus = submissionTime
-    ? "outline_pending"
-    : myRegistration.status;
-
-  const effectiveSubmissionDate =
-    submissionTime || myRegistration.outlineSubmittedAt;
+        );
+      default:
+        return (
+          <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full font-bold text-sm">
+            <Clock size={18} /> Chờ Duyệt
+          </div>
+        );
+    }
+  };
 
   return (
-    <div className="space-y-6 relative">
-      {/* Overwrite Confirmation Modal */}
-      {showOverwriteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center space-x-3 mb-4 text-amber-600">
-              <AlertTriangle size={28} />
-              <h3 className="text-xl font-bold text-gray-900">
-                Ghi đè file cũ
-              </h3>
+    <div className="space-y-8 text-black animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+      {/* Header Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-sm p-8 text-white shadow-lg relative overflow-hidden">
+        <div className="relative z-10">
+          <h2 className="text-3xl font-bold mb-2">Nộp Đề Cương</h2>
+          <p className="text-blue-100 max-w-2xl text-lg">
+            Nộp và theo dõi trạng thái phê duyệt đề cương chi tiết của bạn. Hãy
+            đảm bảo đề cương đầy đủ nội dung theo quy định.
+          </p>
+          {outlineMilestone && (
+            <div className="mt-4 inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-lg text-sm font-medium border border-white/10">
+              <Clock size={16} />
+              Thời gian nộp:{" "}
+              {new Date(outlineMilestone.startDate).toLocaleDateString(
+                "vi-VN"
+              )}{" "}
+              - {new Date(outlineMilestone.endDate).toLocaleDateString("vi-VN")}
+              {!submissionAllowed && !isSubmitted && (
+                <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded font-bold">
+                  Đã đóng / Chưa mở
+                </span>
+              )}
             </div>
-            <p className="text-gray-600 mb-6">
-              Bạn đã nộp đề cương trước đó. Bạn có chắc chắn muốn nộp file mới
-              này và ghi đè lên file cũ không?
-            </p>
-            <div className="flex space-x-3 justify-end">
-              <button
-                onClick={() => setShowOverwriteConfirm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                onClick={executeSubmit}
-                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium transition-colors shadow-sm"
-              >
-                Xác nhận
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+        {/* Abstract Background Shapes */}
+        <div className="absolute top-0 right-0 -mr-10 -mt-10 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl"></div>
+      </div>
 
-      {/* Success Popup */}
-      {showSuccessPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-200">
-            <div className="mx-auto bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle size={32} className="text-green-600" />
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Submission Status */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Warning banner if submission not allowed and not done */}
+          {!submissionAllowed && !isSubmitted && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle className="text-red-600 mt-0.5" size={20} />
+              <div>
+                <h4 className="font-bold text-red-800">
+                  Cổng nộp đề cương hiện đang đóng
+                </h4>
+                <p className="text-sm text-red-600 mt-1">
+                  Hiện tại không nằm trong thời gian quy định nộp đề cương. Vui
+                  lòng quay lại sau hoặc liên hệ giáo viên hướng dẫn.
+                </p>
+              </div>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Thành công!
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Đề cương của bạn đã được cập nhật lên hệ thống thành công.
-            </p>
-            <button
-              onClick={() => setShowSuccessPopup(false)}
-              className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      )}
+          )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="bg-blue-100 p-2 rounded-lg">
-            <FileText size={24} className="text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Nộp đề cương</h2>
-            <p className="text-sm text-gray-500">
-              Upload đề cương chi tiết khóa luận
-            </p>
-          </div>
-        </div>
+          {isSubmitted && !showForm ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                  <FileText className="text-blue-600" size={20} /> Thông Tin Đề
+                  Cương
+                </h3>
+                {renderStatusBadge()}
+              </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6">
-          <h3 className="font-semibold text-gray-900 mb-2">Thông tin đề tài</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Mã đề tài:</span>
-              <span className="font-medium text-gray-900">{myTopic?.code}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Tên đề tài:</span>
-              <span className="font-medium text-gray-900">
-                {myTopic?.title}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Giáo viên HD:</span>
-              <span className="font-medium text-gray-900">
-                {myTeacher?.name}
-              </span>
-            </div>
-          </div>
-        </div>
+              <div className="p-8">
+                {/* Timeline Visual */}
+                <div className="flex items-center justify-between mb-8 relative">
+                  {/* Line */}
+                  <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-100 -z-10 transform -translate-y-1/2"></div>
 
-        {effectiveStatus === "outline_pending" && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-start space-x-3">
-            <Clock size={20} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-yellow-800 mb-1">
-                Đang chờ phản hồi
-              </p>
-              <p className="text-sm text-yellow-700">
-                Đề cương của bạn đang được giáo viên hướng dẫn xem xét. Vui lòng
-                chờ phản hồi.
-              </p>
-              {effectiveSubmissionDate && (
-                <p className="text-xs text-yellow-600 mt-2">
-                  Nộp ngày:{" "}
-                  {new Date(effectiveSubmissionDate).toLocaleDateString(
-                    "vi-VN"
-                  )}{" "}
-                  {new Date(effectiveSubmissionDate).toLocaleTimeString(
-                    "vi-VN"
+                  {/* Step 1: Submit */}
+                  <div className="flex flex-col items-center gap-2 bg-white px-2">
+                    <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
+                      <UploadCloud size={18} />
+                    </div>
+                    <span className="text-xs font-bold text-blue-600">
+                      Đã Nộp
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      {new Date(
+                        registration.outlineSubmittedAt
+                      ).toLocaleDateString("vi-VN")}
+                    </span>
+                  </div>
+
+                  {/* Step 2: Review (Active or Done) */}
+                  <div className="flex flex-col items-center gap-2 bg-white px-2">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg
+                          ${
+                            status !== "pending"
+                              ? "bg-blue-600 text-white shadow-blue-200"
+                              : "bg-gray-100 text-gray-400"
+                          }`}
+                    >
+                      <Clock size={18} />
+                    </div>
+                    <span
+                      className={`text-xs font-bold ${
+                        status !== "pending" ? "text-blue-600" : "text-gray-400"
+                      }`}
+                    >
+                      Đang Duyệt
+                    </span>
+                  </div>
+
+                  {/* Step 3: Result */}
+                  <div className="flex flex-col items-center gap-2 bg-white px-2">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg
+                          ${
+                            status === "approved"
+                              ? "bg-green-500 text-white shadow-green-200"
+                              : status === "rejected"
+                              ? "bg-red-500 text-white shadow-red-200"
+                              : "bg-gray-100 text-gray-400"
+                          }`}
+                    >
+                      {status === "approved" ? (
+                        <CheckCircle size={18} />
+                      ) : status === "rejected" ? (
+                        <X size={18} />
+                      ) : (
+                        <CheckCircle size={18} />
+                      )}
+                    </div>
+                    <span
+                      className={`text-xs font-bold ${
+                        status === "approved"
+                          ? "text-green-600"
+                          : status === "rejected"
+                          ? "text-red-600"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      Kết Quả
+                    </span>
+                  </div>
+                </div>
+
+                {/* File Info Card */}
+                <div className="bg-blue-50/50 rounded-xl p-6 border border-blue-100 flex items-center justify-between group hover:border-blue-300 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white p-3 rounded-lg shadow-sm text-blue-600">
+                      <FileText size={28} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-800">File tài liệu</h4>
+                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                        <Clock size={12} />{" "}
+                        {new Date(
+                          registration.outlineSubmittedAt
+                        ).toLocaleString("vi-VN")}
+                      </p>
+                    </div>
+                  </div>
+                  {registration.outlineFileUrl && (
+                    <a
+                      href={registration.outlineFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-white text-blue-600 text-sm font-bold rounded-lg shadow-sm border border-gray-100 hover:bg-blue-50 transition-colors"
+                    >
+                      Xem Chi Tiết
+                    </a>
                   )}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {effectiveStatus === "outline_approved" && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-start space-x-3">
-            <CheckCircle
-              size={20}
-              className="text-green-600 flex-shrink-0 mt-0.5"
-            />
-            <div className="flex-1">
-              <p className="font-medium text-green-800 mb-1">
-                Đề cương đã được duyệt
-              </p>
-              <p className="text-sm text-green-700 mb-2">
-                Giáo viên đã phê duyệt đề cương của bạn. Bạn có thể bắt đầu thực
-                hiện khóa luận.
-              </p>
-              {myRegistration.outlineFeedback && (
-                <div className="bg-white rounded p-3 mt-2">
-                  <p className="text-xs font-medium text-gray-700 mb-1">
-                    Phản hồi:
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {myRegistration.outlineFeedback}
-                  </p>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {effectiveStatus === "outline_rejected" && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start space-x-3">
-            <XCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-medium text-red-800 mb-1">
-                Đề cương cần chỉnh sửa
-              </p>
-              <p className="text-sm text-red-700 mb-2">
-                Giáo viên yêu cầu bạn chỉnh sửa đề cương theo phản hồi dưới đây.
-              </p>
-              {myRegistration.outlineFeedback && (
-                <div className="bg-white rounded p-3 mt-2">
-                  <p className="text-xs font-medium text-gray-700 mb-1">
-                    Phản hồi:
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {myRegistration.outlineFeedback}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {(effectiveStatus === "in_progress" ||
-          effectiveStatus === "submitted") && (
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6 flex items-start space-x-3">
-            <CheckCircle
-              size={20}
-              className="text-purple-600 flex-shrink-0 mt-0.5"
-            />
-            <div>
-              <p className="font-medium text-purple-800 mb-1">
-                Đã hoàn thành giai đoạn đề cương
-              </p>
-              <p className="text-sm text-purple-700">
-                Bạn đã nộp và được duyệt đề cương. Hiện đang trong giai đoạn
-                thực hiện khóa luận.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {canSubmit && (
-          <form onSubmit={handlePreSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Yêu cầu đề cương
-              </label>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm space-y-2">
-                <p className="text-gray-700">Đề cương cần bao gồm các phần:</p>
-                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-2">
-                  <li>Tên đề tài và mục tiêu nghiên cứu</li>
-                  <li>Phạm vi và đối tượng nghiên cứu</li>
-                  <li>Phương pháp thực hiện</li>
-                  <li>Kế hoạch chi tiết (timeline)</li>
-                  <li>Tài liệu tham khảo</li>
-                  <li>Dự kiến kết quả đạt được</li>
-                </ul>
-                <p className="text-gray-700 mt-3">
-                  <strong>Format:</strong> File PDF, tối đa 10MB
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload đề cương
-              </label>
-              <div
-                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                  errorMessage
-                    ? "border-red-300 bg-red-50"
-                    : "border-gray-300 hover:border-blue-400"
-                }`}
-              >
-                <Upload
-                  size={48}
-                  className={`mx-auto mb-3 ${
-                    errorMessage ? "text-red-400" : "text-gray-400"
-                  }`}
-                />
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  id="outline-file"
-                />
-                <label
-                  htmlFor="outline-file"
-                  className="cursor-pointer text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Chọn file PDF
-                </label>
-                {outlineFile && !errorMessage ? (
-                  <p className="mt-2 text-sm text-green-600 font-medium">
-                    Đã chọn: {outlineFile.name}
-                  </p>
-                ) : (
-                  <p className="mt-2 text-sm text-gray-500">Chưa chọn file</p>
-                )}
-                {errorMessage && (
-                  <p className="mt-2 text-sm text-red-600 flex items-center justify-center">
-                    <XCircle size={14} className="mr-1" />
-                    {errorMessage}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={!outlineFile || isSubmitting || !!errorMessage}
-              className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            >
-              {isSubmitting ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
+                {/* Feedback Section */}
+                {registration.outlineFeedback && (
+                  <div
+                    className={`mt-6 p-6 rounded-xl border ${
+                      status === "rejected"
+                        ? "bg-red-50 border-red-100"
+                        : "bg-green-50 border-green-100"
+                    }`}
                   >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Đang nộp...
-                </>
-              ) : (
-                "Nộp đề cương"
+                    <h4
+                      className={`font-bold mb-2 flex items-center gap-2 ${
+                        status === "rejected"
+                          ? "text-red-800"
+                          : "text-green-800"
+                      }`}
+                    >
+                      {status === "rejected" ? (
+                        <AlertCircle size={18} />
+                      ) : (
+                        <CheckCircle size={18} />
+                      )}
+                      Nhận xét của giảng viên
+                    </h4>
+                    <p
+                      className={`text-sm ${
+                        status === "rejected"
+                          ? "text-red-700"
+                          : "text-green-700"
+                      }`}
+                    >
+                      {registration.outlineFeedback}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              {status !== "approved" && (
+                <div className="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-end">
+                  <button
+                    onClick={() => {
+                      if (submissionAllowed) {
+                        setShowForm(true);
+                        setFileUrl("");
+                      } else {
+                        alert("Hiện chưa đến thời gian nộp hoặc đã hết hạn!");
+                      }
+                    }}
+                    disabled={!submissionAllowed}
+                    className="text-sm font-bold text-gray-600 hover:text-blue-600 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Nộp lại bản mới <ChevronRight size={16} />
+                  </button>
+                </div>
               )}
-            </button>
-          </form>
-        )}
+            </div>
+          ) : (
+            // NOT SUBMITTED or SHOW FORM state
+            <>
+              {!showForm ? (
+                // Empty State
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+                  <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <UploadCloud size={40} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">
+                    Chưa Nộp Đề Cương
+                  </h3>
+                  <p className="text-gray-500 max-w-md mx-auto mb-8">
+                    Bạn chưa nộp bản đề cương nào. Vui lòng chuẩn bị file PDF và
+                    nộp để giảng viên phê duyệt.
+                  </p>
+                  <button
+                    onClick={() => setShowForm(true)}
+                    disabled={!submissionAllowed}
+                    className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 transition-all transform hover:-translate-y-1 flex items-center gap-2 mx-auto disabled:bg-gray-400 disabled:shadow-none disabled:transform-none disabled:cursor-not-allowed"
+                  >
+                    <Send size={18} /> Bắt Đầu Nộp Bài
+                  </button>
+                </div>
+              ) : (
+                // FORM State
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <h3 className="font-bold text-gray-800 text-lg">
+                      Form Nộp Đề Cương
+                    </h3>
+                    <button
+                      onClick={() => setShowForm(false)}
+                      className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <div className="p-8 space-y-6">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        File Đề Cương (PDF){" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <div className="border-2 border-dashed border-gray-300 rounded-xl p-1 hover:border-blue-400 transition-colors bg-gray-50/50">
+                        <FileUpload
+                          onUploadComplete={handleUploadComplete}
+                          maxFiles={1}
+                        />
+                      </div>
+                      {fileUrl && (
+                        <div className="mt-3 flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg border border-green-100">
+                          <CheckCircle size={16} /> Ready to submit
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-700 flex gap-3 items-start">
+                      <AlertCircle className="shrink-0 mt-0.5" size={18} />
+                      <p>
+                        Vui lòng kiểm tra kỹ nội dung trước khi nộp. Sau khi
+                        nộp, giáo viên sẽ nhận được thông báo để xem xét.
+                      </p>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                      <button
+                        onClick={() => setShowForm(false)}
+                        className="px-6 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors"
+                      >
+                        Hủy Bỏ
+                      </button>
+                      <button
+                        onClick={handleSubmit}
+                        disabled={!fileUrl || !submissionAllowed}
+                        className="px-8 py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 disabled:bg-gray-300 disabled:shadow-none transition-all flex items-center gap-2"
+                      >
+                        <Send size={18} /> Xác Nhận Nộp
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Right Column: Guidelines Card */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
+            <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <div className="w-1 h-6 bg-orange-500 rounded-full"></div>
+              Hướng Dẫn & Quy Định
+            </h3>
+            <ul className="space-y-4">
+              {[
+                "Tên đề tài và mục tiêu nghiên cứu rõ ràng.",
+                "Phạm vi và đối tượng nghiên cứu cụ thể.",
+                "Phương pháp thực hiện khả thi.",
+                "Kế hoạch chi tiết (timeline) theo tuần.",
+                "Tài liệu tham khảo chuẩn IEEE/APA.",
+                "Định dạng PDF, tối đa 10MB.",
+              ].map((item, idx) => (
+                <li key={idx} className="flex gap-3 text-sm text-gray-600">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center text-xs font-bold border border-orange-100">
+                    {idx + 1}
+                  </span>
+                  <span className="pt-0.5">{item}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <p className="text-xs text-gray-400 text-center">
+                Cần hỗ trợ? Liên hệ giảng viên hướng dẫn
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
-};
-
-export default OutlineSubmission;
+}

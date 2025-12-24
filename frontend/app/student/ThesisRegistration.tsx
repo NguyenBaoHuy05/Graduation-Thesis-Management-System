@@ -1,56 +1,148 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import {
-  mockTopics,
-  mockRegistrations,
-  mockTeachers,
-  Topic,
-  ThesisRegistration as Registration,
-} from "../../data/mockData";
+import React, { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   BookOpen,
   User,
-  Users,
   CheckCircle,
   Info,
   Search,
   Filter,
+  List,
   Eye,
+  ChevronRight,
+  AlertCircle,
+  X,
 } from "lucide-react";
+import WarningModal from "../../components/WarningModal"; // Import here
+import { gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
+
+const GET_TOPICS = gql`
+  query GetTopics {
+    topics {
+      id
+      code
+      title
+      description
+      requirements
+      studyReferences
+      teacherId
+      specialization
+      status
+      maxStudents
+      currentStudents
+      periodId
+      createdAt
+    }
+  }
+`;
+
+const GET_TEACHERS = gql`
+  query GetTeachers {
+    teachers {
+      id
+      name
+      email
+      currentTheses
+      maxTheses
+    }
+  }
+`;
+
+const MY_REGISTRATIONS = gql`
+  query MyRegistrations($studentId: String!) {
+    myRegistrations(studentId: $studentId) {
+      id
+      studentId
+      topicId
+      teacherId
+      status
+      registeredAt
+    }
+  }
+`;
+
+const REGISTER_TOPIC = gql`
+  mutation RegisterTopic($input: CreateRegistrationInput!) {
+    registerTopic(createRegistrationInput: $input) {
+      id
+      status
+    }
+  }
+`;
 
 const ThesisRegistration: React.FC = () => {
   const { user } = useAuth();
-  
-  // State for search and filter
+
+  // State
   const [searchTerm, setSearchTerm] = useState("");
   const [specializationFilter, setSpecializationFilter] = useState("");
-  
-  // State for modals
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null); // For Confirmation
-  const [viewingTopic, setViewingTopic] = useState<Topic | null>(null); // For Details
+
+  const [selectedTopic, setSelectedTopic] = useState<any | null>(null);
+  const [viewingTopic, setViewingTopic] = useState<any | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  // Local state for registration to simulate immediate update
-  const [myRegistration, setMyRegistration] = useState<Registration | undefined>(undefined);
+  // Warning Modal State
+  const [warningState, setWarningState] = useState<{
+    isOpen: boolean;
+    type: "success" | "warning" | "error";
+    message: string;
+  }>({
+    isOpen: false,
+    type: "success",
+    message: "",
+  });
 
-  useEffect(() => {
-    // Initialize registration from mock data
-    const reg = mockRegistrations.find((r) => r.studentId === user?.profileId);
-    setMyRegistration(reg);
-  }, [user]);
+  // Queries
+  const { data: topicsData, loading: topicsLoading } =
+    useQuery<any>(GET_TOPICS);
+  const { data: teachersData } = useQuery<any>(GET_TEACHERS);
 
-  const approvedTopics = mockTopics.filter((t) => t.status === "approved");
+  const { data: regData, refetch: refetchReg } = useQuery<any>(
+    MY_REGISTRATIONS,
+    {
+      variables: { studentId: user?.profileId },
+      skip: !user?.profileId,
+    }
+  );
+
+  const [registerTopic] = useMutation(REGISTER_TOPIC, {
+    onCompleted: () => {
+      setWarningState({
+        isOpen: true,
+        type: "success",
+        message: "Đăng ký thành công!",
+      });
+      setShowConfirmModal(false);
+      setSelectedTopic(null);
+      refetchReg();
+    },
+    onError: (err: any) => {
+      setWarningState({
+        isOpen: true,
+        type: "error",
+        message: `Lỗi: ${err.message}`,
+      });
+    },
+  });
+
+  const myRegistration = regData?.myRegistrations?.[0];
+  const topics = topicsData?.topics || [];
+  const teachers = teachersData?.teachers || [];
+  const approvedTopics = topics.filter((t: any) => t.status === "approved");
 
   // Filtering Logic
-  const filteredTopics = approvedTopics.filter((topic) => {
-    const teacher = mockTeachers.find((t) => t.id === topic.teacherId);
+  const filteredTopics = approvedTopics.filter((topic: any) => {
+    const teacher = teachers.find((t: any) => t.id === topic.teacherId);
     const matchesSearch =
       topic.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      topic.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (teacher && teacher.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+      (topic.code &&
+        topic.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (teacher &&
+        teacher.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
     const matchesSpecialization = specializationFilter
       ? topic.specialization === specializationFilter
       : true;
@@ -59,332 +151,365 @@ const ThesisRegistration: React.FC = () => {
   });
 
   const uniqueSpecializations = Array.from(
-    new Set(approvedTopics.map((t) => t.specialization))
-  );
+    new Set(approvedTopics.map((t: any) => t.specialization))
+  ) as string[];
 
   const getTeacher = (teacherId: string) => {
-    return mockTeachers.find((t) => t.id === teacherId);
+    return teachers.find((t: any) => t.id === teacherId);
   };
 
-  const handleRegisterClick = (topic: Topic) => {
+  const handleRegisterClick = (topic: any) => {
     setSelectedTopic(topic);
     setShowConfirmModal(true);
   };
 
-  const handleViewDetails = (topic: Topic) => {
+  const handleViewDetails = (topic: any) => {
     setViewingTopic(topic);
     setShowDetailModal(true);
   };
 
   const confirmRegister = () => {
     if (!selectedTopic || !user) return;
-    
-    
-    // Check has been removed.
-    // Logic moved to Topic Proposal Validation (Max Group Size)
-
-    // Simulate API call and state update
-    const newRegistration: Registration = {
-        id: `reg${Date.now()}`,
-        studentId: user.profileId,
-        topicId: selectedTopic.id,
-        teacherId: selectedTopic.teacherId,
-        status: "registered",
-        registeredAt: new Date().toISOString()
-    };
-
-    setMyRegistration(newRegistration);
-    alert("Đăng ký thành công!");
-    setShowConfirmModal(false);
-    setSelectedTopic(null);
+    registerTopic({
+      variables: {
+        input: {
+          studentId: user.profileId,
+          topicId: selectedTopic.id,
+          teacherId: selectedTopic.teacherId,
+        },
+      },
+    });
   };
 
-  // Render "Registered View" if student has a registration
+  // --- RENDER: REGISTERED STUDENT VIEW ---
   if (myRegistration) {
-    const myTopic = mockTopics.find((t) => t.id === myRegistration.topicId);
+    const myTopic = topics.find((t: any) => t.id === myRegistration?.topicId);
     const myTeacher = getTeacher(myRegistration.teacherId);
 
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="bg-green-100 p-2 rounded-lg">
-            <CheckCircle size={24} className="text-green-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Đề tài đã đăng ký
+      <div className="max-w-5xl mx-auto px-4 py-8 animate-in fade-in duration-500">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-green-50 border-b border-green-100 p-4 flex items-center gap-3">
+            <CheckCircle className="text-green-600" size={20} />
+            <h2 className="font-bold text-green-800">
+              Đăng ký đề tài thành công
             </h2>
-            <p className="text-sm text-gray-500">Thông tin khóa luận của bạn</p>
           </div>
-        </div>
+          <div className="p-6 md:p-8">
+            <div className="flex flex-col md:flex-row gap-8">
+              <div className="flex-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Đề tài
+                </label>
+                <h3 className="text-xl font-bold text-gray-900 mt-1 mb-2">
+                  <span className="font-mono text-base font-normal text-gray-500 mr-2">
+                    [{myTopic?.code}]
+                  </span>
+                  {myTopic?.title || "Đang tải..."}
+                </h3>
+                <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                  {myTopic?.description}
+                </p>
 
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl p-6 space-y-4">
-          <div>
-            <p className="text-xs font-medium text-blue-600 mb-1">MÃ ĐỀ TÀI</p>
-            <p className="text-lg font-bold text-gray-900">{myTopic?.code}</p>
-          </div>
-
-          <div>
-            <p className="text-xs font-medium text-blue-600 mb-1">TÊN ĐỀ TÀI</p>
-            <p className="text-xl font-bold text-gray-900">{myTopic?.title}</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4 pt-4 border-t border-blue-200">
-            <div>
-              <p className="text-xs font-medium text-blue-600 mb-1">
-                GIÁO VIÊN HƯỚNG DẪN
-              </p>
-              <p className="text-base font-semibold text-gray-900">
-                {myTeacher?.name}
-              </p>
-              <p className="text-sm text-gray-600">{myTeacher?.email}</p>
+                <div className="flex flex-wrap gap-4 mt-4">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">
+                      GVHD
+                    </label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <User size={16} className="text-gray-400" />
+                      <span className="font-medium text-gray-900">
+                        {myTeacher?.name}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">
+                      Chuyên ngành
+                    </label>
+                    <p className="font-medium text-gray-900 mt-1">
+                      {myTopic?.specialization}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="w-full md:w-64 bg-gray-50 rounded-lg p-4 border border-gray-100 h-fit">
+                <h4 className="font-bold text-gray-700 text-sm mb-3">
+                  Thông tin đăng ký
+                </h4>
+                <ul className="text-sm space-y-2">
+                  <li className="flex justify-between">
+                    <span className="text-gray-500">Trạng thái:</span>
+                    <span className="font-bold text-green-600">
+                      Đã xác nhận
+                    </span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span className="text-gray-500">Ngày đăng ký:</span>
+                    <span className="font-medium text-gray-900">
+                      {new Date(myRegistration.registeredAt).toLocaleDateString(
+                        "vi-VN"
+                      )}
+                    </span>
+                  </li>
+                </ul>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-medium text-blue-600 mb-1">
-                CHUYÊN NGÀNH
-              </p>
-              <p className="text-base font-semibold text-gray-900">
-                {myTopic?.specialization}
-              </p>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-blue-200">
-            <p className="text-xs font-medium text-blue-600 mb-1">TRẠNG THÁI</p>
-            <div className="flex items-center space-x-2">
-              {myRegistration.status === "registered" && (
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                  Đã đăng ký
-                </span>
-              )}
-              {myRegistration.status === "outline_pending" && (
-                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                  Chờ duyệt đề cương
-                </span>
-              )}
-              {myRegistration.status === "outline_approved" && (
-                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                  Đề cương đã duyệt
-                </span>
-              )}
-              {myRegistration.status === "in_progress" && (
-                <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                  Đang thực hiện
-                </span>
-              )}
-              {myRegistration.status === "submitted" && (
-                <span className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium">
-                  Đã nộp khóa luận
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-blue-200">
-            <p className="text-xs font-medium text-blue-600 mb-2">
-              MÔ TẢ ĐỀ TÀI
-            </p>
-            <p className="text-sm text-gray-700 leading-relaxed">
-              {myTopic?.description}
-            </p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Render List View
+  // --- RENDER: TOPIC LIST VIEW (Unregistered) ---
   return (
-    <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-h-[calc(100vh-10rem)]">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="bg-blue-100 p-2 rounded-lg">
-            <BookOpen size={24} className="text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Đăng ký đề tài</h2>
-            <p className="text-sm text-gray-500">
-              Tra cứu và đăng ký đề tài khóa luận
-            </p>
-          </div>
+    <div className="max-w-7xl mx-auto px-4 py-8 animate-in fade-in duration-500">
+      {/* Page Header */}
+      <div className="mb-8 border-b border-gray-200 pb-6">
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <BookOpen className="text-blue-600" size={24} />
+          Đăng Ký Đề Tài Khóa Luận
+        </h1>
+        <p className="text-gray-500 mt-2 text-sm">
+          Danh sách các đề tài khóa luận tốt nghiệp đang mở đăng ký. Vui lòng
+          chọn đề tài phù hợp với chuyên ngành.
+        </p>
+      </div>
+
+      {/* Search & Filter - Clean Bar */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            size={18}
+          />
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo mã, tên đề tài, hoặc giảng viên..."
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all shadow-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-
-        {/* Search & Filter Bar */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex-1 relative">
-                <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-                <input 
-                    type="text" 
-                    placeholder="Tìm theo tên đề tài, mã số hoặc GVHD..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
-            <div className="w-full md:w-1/4 relative">
-                 <Filter className="absolute left-3 top-2.5 text-gray-400" size={18} />
-                 <select
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white"
-                    value={specializationFilter}
-                    onChange={(e) => setSpecializationFilter(e.target.value)}
-                 >
-                    <option value="">Tất cả chuyên ngành</option>
-                    {uniqueSpecializations.map(spec => (
-                        <option key={spec} value={spec}>{spec}</option>
-                    ))}
-                 </select>
-            </div>
-        </div>
-
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start space-x-3">
-          <Info size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">Lưu ý khi đăng ký:</p>
-            <ul className="list-disc list-inside space-y-1 text-blue-700">
-              <li>Mỗi sinh viên chỉ được đăng ký 1 đề tài</li>
-              <li>Kiểm tra số lượng còn nhận trước khi đăng ký</li>
-              <li>Sử dụng chức năng tìm kiếm để lọc đề tài phù hợp</li>
-            </ul>
+        <div className="relative md:w-64">
+          <Filter
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            size={18}
+          />
+          <select
+            className="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm appearance-none shadow-sm cursor-pointer"
+            value={specializationFilter}
+            onChange={(e) => setSpecializationFilter(e.target.value)}
+          >
+            <option value="">Tất cả chuyên ngành</option>
+            {uniqueSpecializations.map((spec) => (
+              <option key={spec} value={spec}>
+                {spec}
+              </option>
+            ))}
+          </select>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+            <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+            </svg>
           </div>
-        </div>
-
-        <div className="space-y-4">
-          {filteredTopics.length === 0 ? (
-             <div className="text-center py-12 text-gray-500">
-                 Không tìm thấy đề tài nào phù hợp.
-             </div>
-          ) : (
-          filteredTopics.map((topic) => {
-            const teacher = topic.teacherId ? getTeacher(topic.teacherId) : undefined;
-            const isFull = topic.currentStudents >= topic.maxStudents;
-            const isTeacherFull =
-              teacher && teacher.currentTheses >= teacher.maxTheses;
-
-            return (
-              <div
-                key={topic.id}
-                className={`border rounded-xl p-5 transition-all ${
-                  isFull || isTeacherFull
-                    ? "border-gray-200 bg-gray-50"
-                    : "border-gray-200 hover:border-blue-300 hover:shadow-md"
-                }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
-                        {topic.code}
-                      </span>
-                      <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                        {topic.specialization}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">
-                      {topic.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed mb-3 line-clamp-2">
-                      {topic.description}
-                    </p>
-
-                    <div className="flex items-center space-x-4 text-sm mb-3">
-                      <div className="flex items-center space-x-2">
-                        <User size={16} className="text-gray-400" />
-                        <span className="text-gray-700 font-medium">{teacher?.name}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Users size={16} className="text-gray-400" />
-                        <span
-                          className={`font-medium ${
-                            isFull ? "text-red-600" : "text-green-600"
-                          }`}
-                        >
-                          {topic.currentStudents}/{topic.maxStudents}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="ml-4 flex flex-col space-y-2">
-                    <button
-                        onClick={() => handleViewDetails(topic)}
-                        className="px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                    >
-                        <Eye size={16} /> Chi tiết
-                    </button>
-                    {isFull || isTeacherFull ? (
-                      <button
-                        disabled
-                        className="px-4 py-2 bg-gray-200 text-gray-500 rounded-lg text-sm font-medium cursor-not-allowed"
-                      >
-                        Đã đầy
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleRegisterClick(topic)}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Đăng ký
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-          )}
         </div>
       </div>
 
-      {/* Confirmation Modal */}
+      {/* Main List - Table Style */}
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        {topicsLoading ? (
+          <div className="p-10 text-center text-gray-500 text-sm">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            Đang tải dữ liệu...
+          </div>
+        ) : filteredTopics.length === 0 ? (
+          <div className="p-10 text-center text-gray-500 text-sm">
+            <Info size={32} className="mx-auto text-gray-300 mb-2" />
+            Không tìm thấy đề tài nào phù hợp.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b border-gray-200">
+                  <th className="px-6 py-4 w-24">Mã</th>
+                  <th className="px-6 py-4">Đề tài</th>
+                  <th className="px-6 py-4 w-48">Giảng viên</th>
+                  <th className="px-6 py-4 w-32 text-center">Đã ĐK</th>
+                  <th className="px-6 py-4 w-32 text-right">Tác vụ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredTopics.map((topic: any) => {
+                  const teacher = getTeacher(topic.teacherId);
+                  const max = topic.maxStudents || 1;
+                  const current = topic.currentStudents || 0;
+                  const isFull = current >= max;
+                  const isTeacherFull =
+                    teacher &&
+                    (teacher.currentTheses || 0) >= (teacher.maxTheses || 99);
+                  const percent = Math.min(100, (current / max) * 100);
+
+                  return (
+                    <tr
+                      key={topic.id}
+                      className="hover:bg-gray-50/80 transition-colors group"
+                    >
+                      <td className="px-6 py-4 align-top">
+                        <span className="font-mono text-xs font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                          {topic.code || "---"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 align-top">
+                        <div
+                          className="font-bold text-gray-900 group-hover:text-blue-700 cursor-pointer transition-colors mb-1"
+                          onClick={() => handleViewDetails(topic)}
+                        >
+                          {topic.title}
+                        </div>
+                        <div className="text-gray-500 text-xs line-clamp-1 mb-1">
+                          {topic.description}
+                        </div>
+                        {topic.specialization && (
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 uppercase border border-blue-100">
+                            {topic.specialization}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 align-top">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                            {teacher?.name?.charAt(0)}
+                          </div>
+                          <span className="text-sm text-gray-700 font-medium">
+                            {teacher?.name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 align-middle text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span
+                            className={`text-xs font-bold ${
+                              isFull ? "text-red-500" : "text-gray-700"
+                            }`}
+                          >
+                            {current}/{max}
+                          </span>
+                          <div className="w-16 bg-gray-200 rounded-full h-1 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                isFull ? "bg-red-500" : "bg-blue-500"
+                              }`}
+                              style={{ width: `${percent}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 align-middle text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleViewDetails(topic)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Xem chi tiết"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          {!isFull && !isTeacherFull ? (
+                            <button
+                              onClick={() => handleRegisterClick(topic)}
+                              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded shadow-sm transition-colors whitespace-nowrap"
+                            >
+                              Đăng ký
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="px-3 py-1.5 bg-gray-100 text-gray-400 text-xs font-bold rounded cursor-not-allowed whitespace-nowrap"
+                            >
+                              Đã đầy
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Footer Info */}
+      <div className="mt-4 flex flex-wrap gap-4 text-xs text-gray-400 justify-between px-2">
+        <div className="flex gap-4">
+          <span className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div> Còn chỗ
+          </span>
+          <span className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div> Đã đầy
+          </span>
+        </div>
+        <div>Cập nhật: {new Date().toLocaleDateString("vi-VN")}</div>
+      </div>
+
+      {/* --- MODALS --- */}
+
+      {/* Confirmation Modal - Clean Style */}
       {showConfirmModal && selectedTopic && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900">
-                Xác nhận đăng ký
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="font-bold text-lg text-gray-900">
+                Xác nhận đăng ký đề tài
               </h3>
             </div>
-
             <div className="p-6 space-y-4">
               <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Đề tài</p>
-                <p className="text-lg font-bold text-gray-900">
+                <label className="text-xs font-bold text-gray-500 uppercase">
+                  Đề tài
+                </label>
+                <div className="font-semibold text-gray-900 mt-1 pb-2 border-b border-gray-100">
                   {selectedTopic.title}
-                </p>
+                </div>
               </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">
-                  Giáo viên hướng dẫn
-                </p>
-                <p className="text-base font-semibold text-gray-900">
-                  {selectedTopic.teacherId
-                    ? getTeacher(selectedTopic.teacherId)?.name
-                    : "N/A"}
-                </p>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="text-xs font-bold text-gray-500 uppercase">
+                    Giảng viên
+                  </label>
+                  <div className="text-sm text-gray-900 mt-1">
+                    {getTeacher(selectedTopic.teacherId)?.name}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase">
+                    Mã số
+                  </label>
+                  <div className="text-sm font-mono text-gray-900 mt-1">
+                    {selectedTopic.code}
+                  </div>
+                </div>
               </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  <strong>Lưu ý:</strong> Sau khi đăng ký, bạn sẽ không thể thay
-                  đổi đề tài. Vui lòng xem xét kỹ trước khi xác nhận.
+              <div className="flex gap-2 items-start bg-blue-50 text-blue-800 text-sm p-3 rounded border border-blue-100">
+                <Info size={16} className="shrink-0 mt-0.5" />
+                <p>
+                  Hành động này sẽ ghi nhận bạn vào danh sách đăng ký. Vui lòng
+                  kiểm tra kỹ trước khi xác nhận.
                 </p>
               </div>
             </div>
-
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
               <button
-                onClick={() => {
-                  setShowConfirmModal(false);
-                  setSelectedTopic(null);
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                onClick={() => setShowConfirmModal(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded font-medium text-sm transition-colors"
               >
-                Hủy
+                Hủy bỏ
               </button>
               <button
                 onClick={confirmRegister}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium text-sm shadow-sm transition-colors"
               >
                 Xác nhận đăng ký
               </button>
@@ -393,73 +518,147 @@ const ThesisRegistration: React.FC = () => {
         </div>
       )}
 
-      {/* Detail Modal */}
+      {/* Details Modal - Clean Style */}
       {showDetailModal && viewingTopic && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-             <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-gray-900">Chi tiết đề tài</h3>
-                    <button onClick={() => setShowDetailModal(false)} className="text-gray-500 hover:text-gray-700">
-                        <span className="text-2xl">&times;</span>
-                    </button>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-gray-200 flex justify-between items-start">
+              <div>
+                <div className="flex gap-2 mb-2">
+                  <span className="font-mono text-xs font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">
+                    {viewingTopic.code}
+                  </span>
+                  <span className="text-xs font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100 uppercase">
+                    {viewingTopic.specialization}
+                  </span>
                 </div>
-                <div className="p-6 space-y-6">
-                    <div>
-                        <h4 className="text-lg font-bold text-blue-900 mb-2">{viewingTopic.title}</h4>
-                        <div className="flex gap-2">
-                             <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
-                                {viewingTopic.code}
-                            </span>
-                            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                                {viewingTopic.specialization}
-                            </span>
-                        </div>
-                    </div>
+                <h3 className="font-bold text-xl text-gray-900 leading-tight pr-4">
+                  {viewingTopic.title}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+              >
+                <X size={24} />
+              </button>
+            </div>
 
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6">
+              <div className="grid grid-cols-2 gap-6 pb-6 border-b border-gray-100">
+                <div>
+                  <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">
+                    Giảng viên hướng dẫn
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+                      {getTeacher(viewingTopic.teacherId)?.name?.charAt(0)}
+                    </div>
                     <div>
-                        <h5 className="font-bold text-gray-900 mb-1">Mô tả</h5>
-                        <p className="text-gray-700 text-sm leading-relaxed">{viewingTopic.description}</p>
+                      <div className="font-bold text-gray-900">
+                        {getTeacher(viewingTopic.teacherId)?.name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {getTeacher(viewingTopic.teacherId)?.email}
+                      </div>
                     </div>
-
-                    <div>
-                        <h5 className="font-bold text-gray-900 mb-1">Yêu cầu sinh viên</h5>
-                        <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{viewingTopic.requirements}</p>
-                    </div>
-
-                    {viewingTopic.references && viewingTopic.references.length > 0 && (
-                        <div>
-                             <h5 className="font-bold text-gray-900 mb-1">Tài liệu tham khảo</h5>
-                             <ul className="list-disc list-inside text-sm text-gray-700">
-                                {viewingTopic.references.map((ref, idx) => (
-                                    <li key={idx}>{ref}</li>
-                                ))}
-                             </ul>
-                        </div>
-                    )}
-                    
-                    <div className="flex gap-4 pt-4 border-t">
-                        <div className="flex-1">
-                             <p className="text-xs text-gray-500">Giảng viên hướng dẫn</p>
-                             <p className="font-medium text-gray-900">{getTeacher(viewingTopic.teacherId)?.name}</p>
-                        </div>
-                         <div className="flex-1">
-                             <p className="text-xs text-gray-500">Số lượng</p>
-                             <p className="font-medium text-gray-900">{viewingTopic.currentStudents}/{viewingTopic.maxStudents}</p>
-                        </div>
-                    </div>
+                  </div>
                 </div>
-                <div className="p-6 border-t border-gray-200 flex justify-end">
-                     <button
-                        onClick={() => setShowDetailModal(false)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        Đóng
-                      </button>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">
+                    Thông tin đăng ký
+                  </h4>
+                  <div className="w-full bg-gray-100 rounded-full h-2 mb-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          ((viewingTopic.currentStudents || 0) /
+                            viewingTopic.maxStudents) *
+                            100
+                        )}%`,
+                      }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>
+                      Đã đăng ký:{" "}
+                      <span className="font-mono font-bold">
+                        {viewingTopic.currentStudents || 0}
+                      </span>
+                    </span>
+                    <span>
+                      Tối đa:{" "}
+                      <span className="font-mono font-bold">
+                        {viewingTopic.maxStudents}
+                      </span>
+                    </span>
+                  </div>
                 </div>
-             </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="flex items-center gap-2 font-bold text-gray-900 mb-2">
+                    <Info size={16} className="text-blue-500" /> Mô tả đề tài
+                  </h4>
+                  <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    {viewingTopic.description}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="flex items-center gap-2 font-bold text-gray-900 mb-2">
+                    <CheckCircle size={16} className="text-green-500" /> Yêu cầu
+                    sinh viên
+                  </h4>
+                  <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100 whitespace-pre-line">
+                    {viewingTopic.requirements}
+                  </p>
+                </div>
+
+                {viewingTopic.studyReferences &&
+                  viewingTopic.studyReferences.length > 0 && (
+                    <div>
+                      <h4 className="flex items-center gap-2 font-bold text-gray-900 mb-2">
+                        <BookOpen size={16} className="text-purple-500" /> Tài
+                        liệu tham khảo
+                      </h4>
+                      <ul className="list-disc list-inside text-sm text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-100 space-y-1">
+                        {viewingTopic.studyReferences.map(
+                          (ref: string, idx: number) => (
+                            <li key={idx}>{ref}</li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-5 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-bold rounded shadow-sm hover:bg-gray-50 text-sm transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
         </div>
       )}
-    </>
+      {/* Reusable Warning Modal */}
+      <WarningModal
+        isOpen={warningState.isOpen}
+        onClose={() => setWarningState({ ...warningState, isOpen: false })}
+        type={warningState.type}
+        message={warningState.message}
+      />
+    </div>
   );
 };
 

@@ -1,15 +1,8 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import {
-  mockTopics,
-  mockTeachers,
-  Topic,
-  mockThesisPeriods,
-} from "../../data/mockData";
+import React, { useState } from "react";
 import {
   Plus,
   Search,
-  Filter,
   CheckCircle,
   XCircle,
   Edit,
@@ -18,23 +11,93 @@ import {
   FileText,
   AlertCircle,
 } from "lucide-react";
+import { gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 
-/**
- * Topic Management for Department Head
- * - View list of topics
- * - Approve/Reject pending topics
- * - Create/Edit/Delete topics
- */
+import { Topic, Teacher, ThesisPeriod } from "../../data/mockData";
+
+// --- GraphQL Queries & Mutations ---
+
+const GET_TOPICS = gql`
+  query GetTopics {
+    topics {
+      id
+      code
+      title
+      description
+      requirements
+      studyReferences
+      specialization
+      status
+      maxStudents
+      currentStudents
+      createdAt
+      teacherId
+      periodId
+    }
+  }
+`;
+
+const GET_TEACHERS = gql`
+  query GetTeachers {
+    teachers {
+      id
+      code
+      name
+    }
+  }
+`;
+
+const GET_ACTIVE_PERIOD = gql`
+  query GetActiveThesisPeriod {
+    thesisPeriods {
+      id
+      status
+      maxGroupSize
+    }
+  }
+`;
+
+const CREATE_TOPIC = gql`
+  mutation CreateTopic($createTopicInput: CreateTopicInput!) {
+    createTopic(createTopicInput: $createTopicInput) {
+      id
+      title
+      status
+    }
+  }
+`;
+
+const UPDATE_TOPIC = gql`
+  mutation UpdateTopic($id: String!, $updateTopicInput: UpdateTopicInput!) {
+    updateTopic(id: $id, updateTopicInput: $updateTopicInput) {
+      id
+      title
+      description
+      requirements
+      specialization
+      maxStudents
+      status
+      teacherId
+    }
+  }
+`;
+
+const DELETE_TOPIC = gql`
+  mutation DeleteTopic($id: String!) {
+    deleteTopic(id: $id)
+  }
+`;
+
 const TopicManagement: React.FC = () => {
   // --- State ---
-  const [topics, setTopics] = useState<Topic[]>([]);
   const [filterStatus, setFilterStatus] = useState<
     "all" | "pending" | "approved" | "rejected"
   >("all");
   const [searchTerm, setSearchTerm] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<any | null>(null);
 
   // Confirmation Modal State
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -43,7 +106,7 @@ const TopicManagement: React.FC = () => {
   >(null);
   const [topicToConfirm, setTopicToConfirm] = useState<string | null>(null);
 
-  const initialFormState: Partial<Topic> = {
+  const initialFormState = {
     title: "",
     description: "",
     requirements: "",
@@ -53,15 +116,61 @@ const TopicManagement: React.FC = () => {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  // Load data
-  useEffect(() => {
-    setTopics([...mockTopics]);
-  }, []);
+  // --- GraphQL Hooks ---
+  const {
+    data: topicsData,
+    loading: topicsLoading,
+    refetch: refetchTopics,
+  } = useQuery<{ topics: Topic[] }>(GET_TOPICS);
+
+  const { data: teachersData } = useQuery<{ teachers: Teacher[] }>(
+    GET_TEACHERS
+  );
+  const { data: periodsData } = useQuery<{ thesisPeriods: ThesisPeriod[] }>(
+    GET_ACTIVE_PERIOD
+  );
+
+  const [createTopic] = useMutation(CREATE_TOPIC, {
+    onCompleted: () => {
+      alert("Thêm đề tài thành công!");
+      refetchTopics();
+      closeModal();
+    },
+    onError: (err) => alert(`Lỗi: ${err.message}`),
+  });
+
+  const [updateTopic] = useMutation(UPDATE_TOPIC, {
+    onCompleted: () => {
+      alert("Cập nhật thành công!");
+      refetchTopics();
+      closeModal();
+      closeConfirmModal();
+    },
+    onError: (err) => alert(`Lỗi: ${err.message}`),
+  });
+
+  const [deleteTopic] = useMutation(DELETE_TOPIC, {
+    onCompleted: () => {
+      alert("Đã xóa đề tài!");
+      refetchTopics();
+    },
+    onError: (err) => alert(`Lỗi: ${err.message}`),
+  });
+
+  const topics = topicsData?.topics || [];
+  const teachers = teachersData?.teachers || [];
+  const activePeriod = periodsData?.thesisPeriods?.find(
+    (p: any) => p.status === "active"
+  );
 
   // Stats
   const totalTopics = topics.length;
-  const pendingTopics = topics.filter((t) => t.status === "pending").length;
-  const approvedTopics = topics.filter((t) => t.status === "approved").length;
+  const pendingTopics = topics.filter(
+    (t: any) => t.status === "pending"
+  ).length;
+  const approvedTopics = topics.filter(
+    (t: any) => t.status === "approved"
+  ).length;
 
   // Handlers
   const openApproveModal = (id: string) => {
@@ -79,27 +188,14 @@ const TopicManagement: React.FC = () => {
   const handleConfirmAction = () => {
     if (!topicToConfirm || !confirmAction) return;
 
-    if (confirmAction === "approve") {
-      const updated = topics.map((t) =>
-        t.id === topicToConfirm
-          ? { ...t, status: "approved" as const, approverId: "hd1" }
-          : t
-      );
-      setTopics(updated);
-      alert("Đã duyệt đề tài!");
-    } else if (confirmAction === "reject") {
-      const updated = topics.map((t) =>
-        t.id === topicToConfirm
-          ? { ...t, status: "rejected" as const, approverId: "hd1" }
-          : t
-      );
-      setTopics(updated);
-      alert("Đã từ chối đề tài!");
-    }
-
-    setIsConfirmModalOpen(false);
-    setTopicToConfirm(null);
-    setConfirmAction(null);
+    updateTopic({
+      variables: {
+        id: topicToConfirm,
+        updateTopicInput: {
+          status: confirmAction === "approve" ? "approved" : "rejected",
+        },
+      },
+    });
   };
 
   const closeConfirmModal = () => {
@@ -110,60 +206,59 @@ const TopicManagement: React.FC = () => {
 
   const handleDelete = (id: string) => {
     if (confirm("Bạn có chắc chắn muốn xóa đề tài này?")) {
-      setTopics(topics.filter((t) => t.id !== id));
+      deleteTopic({ variables: { id } });
     }
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedTopic) {
-      // Edit
-      const updated = topics.map((t) =>
-        t.id === selectedTopic.id
-          ? ({
-              ...t,
-              ...formData,
-              // If edited, maybe reset to approved or keep current?
-              // Usually head edits = approved.
-            } as Topic)
-          : t
-      );
-      setTopics(updated);
-      alert("Cập nhật đề tài thành công!");
-    } else {
-      // Create - Head creates topics usually for generic or themselves, or assigns to others.
-      // Assuming Head creates = Approved immediately? Or Pending?
-      // Let's assume Approved.
-      const newTopic: Topic = {
-        id: `tp${Date.now()}`,
-        code: `DT${Math.floor(Math.random() * 1000)}`,
-        title: formData.title || "",
-        description: formData.description || "",
-        requirements: formData.requirements || "",
-        references: [],
-        teacherId: formData.teacherId || mockTeachers[0].id,
-        specialization: formData.specialization || "CNTT",
-        status: "approved",
-        maxStudents: formData.maxStudents || 2,
-        currentStudents: 0,
-        createdAt: new Date().toISOString().split("T")[0],
-        periodId: mockThesisPeriods[0].id, // Default to first active
-        approverId: "hd1",
-      };
-      setTopics([newTopic, ...topics]);
-      alert("Thêm đề tài thành công!");
+
+    if (!activePeriod && !selectedTopic) {
+      alert("Không có kỳ luân văn đang hoạt động để tạo đề tài mới.");
+      return;
     }
-    closeModal();
+
+    const input = {
+      title: formData.title,
+      description: formData.description,
+      requirements: formData.requirements,
+      specialization: formData.specialization,
+      maxStudents: formData.maxStudents,
+      teacherId: formData.teacherId,
+    };
+
+    if (selectedTopic) {
+      updateTopic({
+        variables: {
+          id: selectedTopic.id,
+          updateTopicInput: input,
+        },
+      });
+    } else {
+      if (!activePeriod) {
+        alert("Không xác định được kỳ khóa luận đang hoạt động.");
+        return;
+      }
+      createTopic({
+        variables: {
+          createTopicInput: {
+            ...input,
+            studyReferences: [], // Assuming optional or empty for now
+            periodId: activePeriod.id,
+          },
+        },
+      });
+    }
   };
 
-  const openModal = (topic?: Topic) => {
+  const openModal = (topic?: any) => {
     if (topic) {
       setSelectedTopic(topic);
       setFormData({
         title: topic.title,
-        description: topic.description,
-        requirements: topic.requirements,
-        specialization: topic.specialization,
+        description: topic.description || "",
+        requirements: topic.requirements || "",
+        specialization: topic.specialization || "",
         maxStudents: topic.maxStudents,
         teacherId: topic.teacherId,
       });
@@ -180,11 +275,11 @@ const TopicManagement: React.FC = () => {
   };
 
   // Filter
-  const filteredTopics = topics.filter((t) => {
+  const filteredTopics = topics.filter((t: any) => {
     const matchesStatus = filterStatus === "all" || t.status === filterStatus;
     const matchesSearch =
       t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.code.toLowerCase().includes(searchTerm.toLowerCase());
+      (t.code && t.code.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesStatus && matchesSearch;
   });
 
@@ -287,15 +382,26 @@ const TopicManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredTopics.length > 0 ? (
-                filteredTopics.map((topic) => {
-                  const teacherName =
-                    mockTeachers.find((t) => t.id === topic.teacherId)?.name ||
-                    "Unknown";
+              {topicsLoading ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-8 text-center text-gray-500"
+                  >
+                    Đang tải dữ liệu...
+                  </td>
+                </tr>
+              ) : filteredTopics.length > 0 ? (
+                filteredTopics.map((topic: any) => {
+                  const teacher = teachers.find(
+                    (t: any) => t.id === topic.teacherId
+                  );
+                  const teacherName = teacher ? teacher.name : "Unknown";
+
                   return (
                     <tr key={topic.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 font-mono text-sm text-gray-600">
-                        {topic.code}
+                        {topic.code || "---"}
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-sm font-medium text-gray-900 line-clamp-2">
@@ -305,15 +411,17 @@ const TopicManagement: React.FC = () => {
                           {topic.specialization}
                         </p>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-700">
-                        {teacherName}
+                      <td className="px-6 py-4 text-sm text-gray-700 w-44">
+                        <div className="truncate" title={teacherName}>
+                          {teacherName}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
-                        {topic.currentStudents}/{topic.maxStudents}
+                        {topic.currentStudents || 0}/{topic.maxStudents}
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center px-3.5 py-1 rounded-sm text-xs font-medium capitalize 
+                          className={`inline-flex items-center px-3.5 py-1 rounded-full text-xs font-medium capitalize 
                                         ${
                                           topic.status === "approved"
                                             ? "bg-green-100 text-green-800"
@@ -436,7 +544,7 @@ const TopicManagement: React.FC = () => {
                   <input
                     type="number"
                     min={1}
-                    max={3}
+                    max={activePeriod ? activePeriod.maxGroupSize || 3 : 3}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
                     value={formData.maxStudents}
@@ -454,6 +562,7 @@ const TopicManagement: React.FC = () => {
                   Giảng viên hướng dẫn
                 </label>
                 <select
+                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
                   value={formData.teacherId}
                   onChange={(e) =>
@@ -461,7 +570,7 @@ const TopicManagement: React.FC = () => {
                   }
                 >
                   <option value="">-- Chọn giảng viên --</option>
-                  {mockTeachers.map((t) => (
+                  {teachers.map((t: any) => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.code})
                     </option>
@@ -504,7 +613,8 @@ const TopicManagement: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={!activePeriod}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
                 >
                   {selectedTopic ? "Cập nhật" : "Lưu đề tài"}
                 </button>

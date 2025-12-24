@@ -281,10 +281,31 @@ const thesisPeriods = [
         type: 'registration',
       },
       {
+        id: 'm02',
+        name: 'Nộp đề cương',
+        startDate: '2025-09-01',
+        endDate: '2025-09-15',
+        type: 'submission',
+      },
+      {
+        id: 'm03',
+        name: 'Báo cáo tiến độ 1',
+        startDate: '2025-10-15',
+        endDate: '2025-10-20',
+        type: 'reporting',
+      },
+      {
+        id: 'm04',
+        name: 'Nộp khóa luận',
+        startDate: '2025-12-01',
+        endDate: '2025-12-15',
+        type: 'submission',
+      },
+      {
         id: 'm05',
         name: 'Bảo vệ trước hội đồng',
-        startDate: '2026-12-20',
-        endDate: '2026-12-25',
+        startDate: '2025-12-20',
+        endDate: '2025-12-25',
         type: 'defense',
       },
     ],
@@ -431,7 +452,7 @@ async function seed() {
   console.log('Seeding thesis_registrations...');
   const thesisRegistrations = [
     {
-      id: '30eebc99-9c0b-4ef8-bb6d-6bb9bd380h01',
+      id: '30eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
       student_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
       topic_id: '10eebc99-9c0b-4ef8-bb6d-6bb9bd380f01',
       teacher_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b01',

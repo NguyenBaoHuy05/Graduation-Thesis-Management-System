@@ -2,6 +2,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { UploadController } from './upload.controller';
 
 // GraphQL integration (Apollo)
 import { GraphQLModule } from '@nestjs/graphql';
@@ -20,6 +21,10 @@ import { StudentsModule } from './students/students.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { CouncilsModule } from './councils/councils.module';
+import { TopicsModule } from './topics/topics.module';
+import { RegistrationsModule } from './registrations/registrations.module';
+import { ProgressReportsModule } from './progress_reports/progress_reports.module';
+import { TimelinesModule } from './timelines/timelines.module';
 
 /**
  * AppModule
@@ -62,14 +67,12 @@ import { CouncilsModule } from './councils/councils.module';
     TeachersModule,
     NotificationsModule,
     CouncilsModule,
+    TopicsModule,
+    RegistrationsModule,
+    ProgressReportsModule,
+    TimelinesModule,
   ],
-
-  // // Controllers: nơi định nghĩa các route HTTP (nếu có). Ở đây `AppController`
-  // // có thể chứa các route REST đơn giản; GraphQL resolvers thường là providers.
-  // controllers: [AppController],
-
-  // // Providers: classes cung cấp logic (service, resolver...). `AppService` được
-  // // inject vào `AppController` để tách biệt logic và routing.
-  // providers: [AppService, User],
+  controllers: [UploadController],
+  providers: [AppService],
 })
 export class AppModule {}

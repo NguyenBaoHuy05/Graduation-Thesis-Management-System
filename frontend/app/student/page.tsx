@@ -49,8 +49,8 @@ const StudentDashboard: React.FC = () => {
     },
     { id: "outline" as TabType, name: "Nộp đề cương", icon: FileText },
     { id: "submission" as TabType, name: "Nộp khóa luận", icon: Upload },
-    { id: "defense" as TabType, name: "Đăng ký bảo vệ", icon: Shield },
     { id: "progress" as TabType, name: "Theo dõi tiến độ", icon: TrendingUp },
+    { id: "defense" as TabType, name: "Đăng ký bảo vệ", icon: Shield },
     // { id: "complaint" as TabType, name: "Khiếu nại", icon: Shield },
     { id: "notification" as TabType, name: "Thông báo", icon: Bell },
   ];

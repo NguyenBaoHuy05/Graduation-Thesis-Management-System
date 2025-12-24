@@ -213,6 +213,83 @@ export interface Database {
           created_at?: string;
         };
       };
+      thesis_registrations: {
+        Row: {
+          id: string;
+          student_id: string;
+          topic_id: string;
+          teacher_id: string;
+          status:
+            | 'registered'
+            | 'outline_pending'
+            | 'outline_rejected'
+            | 'outline_approved'
+            | 'in_progress'
+            | 'submitted'
+            | 'defense_ready'
+            | 'defense_registered'
+            | 'defended'
+            | 'completed';
+          registered_at: string;
+          outline_file_url: string | null;
+          outline_submitted_at: string | null;
+          outline_feedback: string | null;
+          thesis_file_url: string | null;
+          thesis_submitted_at: string | null;
+          code_link: string | null;
+          score: number | null;
+        };
+        Insert: {
+          id?: string;
+          student_id: string;
+          topic_id: string;
+          teacher_id: string;
+          status?:
+            | 'registered'
+            | 'outline_pending'
+            | 'outline_rejected'
+            | 'outline_approved'
+            | 'in_progress'
+            | 'submitted'
+            | 'defense_ready'
+            | 'defense_registered'
+            | 'defended'
+            | 'completed';
+          registered_at?: string;
+          outline_file_url?: string | null;
+          outline_submitted_at?: string | null;
+          outline_feedback?: string | null;
+          thesis_file_url?: string | null;
+          thesis_submitted_at?: string | null;
+          code_link?: string | null;
+          score?: number | null;
+        };
+        Update: {
+          id?: string;
+          student_id?: string;
+          topic_id?: string;
+          teacher_id?: string;
+          status?:
+            | 'registered'
+            | 'outline_pending'
+            | 'outline_rejected'
+            | 'outline_approved'
+            | 'in_progress'
+            | 'submitted'
+            | 'defense_ready'
+            | 'defense_registered'
+            | 'defended'
+            | 'completed';
+          registered_at?: string;
+          outline_file_url?: string | null;
+          outline_submitted_at?: string | null;
+          outline_feedback?: string | null;
+          thesis_file_url?: string | null;
+          thesis_submitted_at?: string | null;
+          code_link?: string | null;
+          score?: number | null;
+        };
+      };
       topics: {
         Row: {
           id: string;
@@ -224,8 +301,16 @@ export interface Database {
           teacher_id: string;
           approver_id: string | null;
           specialization: string | null;
-          status: 'pending' | 'approved' | 'rejected' | 'assigned';
-          max_students: number | null;
+          status:
+            | 'registered'
+            | 'outline_pending'
+            | 'outline_rejected'
+            | 'outline_approved'
+            | 'in_progress'
+            | 'submitted'
+            | 'defense_ready'
+            | 'defended'
+            | 'completed';
           current_students: number | null;
           period_id: string;
           created_at: string;
@@ -240,8 +325,16 @@ export interface Database {
           teacher_id: string;
           approver_id?: string | null;
           specialization?: string | null;
-          status: 'pending' | 'approved' | 'rejected' | 'assigned';
-          max_students?: number | null;
+          status:
+            | 'registered'
+            | 'outline_pending'
+            | 'outline_rejected'
+            | 'outline_approved'
+            | 'in_progress'
+            | 'submitted'
+            | 'defense_ready'
+            | 'defended'
+            | 'completed';
           current_students?: number | null;
           period_id: string;
           created_at?: string;
@@ -256,8 +349,16 @@ export interface Database {
           teacher_id?: string;
           approver_id?: string | null;
           specialization?: string | null;
-          status?: 'pending' | 'approved' | 'rejected' | 'assigned';
-          max_students?: number | null;
+          status?:
+            | 'registered'
+            | 'outline_pending'
+            | 'outline_rejected'
+            | 'outline_approved'
+            | 'in_progress'
+            | 'submitted'
+            | 'defense_ready'
+            | 'defended'
+            | 'completed';
           current_students?: number | null;
           period_id?: string;
           created_at?: string;
@@ -339,6 +440,76 @@ export interface Database {
           description?: string | null;
           file_url?: string;
           type?: 'outline' | 'thesis' | 'report' | 'defense_request' | 'other';
+          created_at?: string;
+        };
+      };
+      progress_reports: {
+        Row: {
+          id: string;
+          registration_id: string;
+          title: string;
+          content: string;
+          plan_next: string;
+          file_url: string | null;
+          submitted_at: string | null;
+          status: 'pending' | 'approved' | 'rejected';
+          feedback: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          registration_id: string;
+          title: string;
+          content: string;
+          plan_next: string;
+          file_url?: string | null;
+          submitted_at?: string | null;
+          status?: 'pending' | 'approved' | 'rejected';
+          feedback?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          registration_id?: string;
+          title?: string;
+          content?: string;
+          plan_next?: string;
+          file_url?: string | null;
+          submitted_at?: string | null;
+          status?: 'pending' | 'approved' | 'rejected';
+          feedback?: string | null;
+          created_at?: string;
+        };
+      };
+      timelines: {
+        Row: {
+          id: string;
+          registration_id: string;
+          title: string;
+          description: string | null;
+          due_date: string | null;
+          status: 'pending' | 'completed';
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          registration_id: string;
+          title: string;
+          description?: string | null;
+          due_date?: string | null;
+          status?: 'pending' | 'completed';
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          registration_id?: string;
+          title?: string;
+          description?: string | null;
+          due_date?: string | null;
+          status?: 'pending' | 'completed';
+          completed_at?: string | null;
           created_at?: string;
         };
       };
