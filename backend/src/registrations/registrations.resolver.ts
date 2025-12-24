@@ -74,6 +74,11 @@ export class RegistrationsResolver {
     );
   }
 
+  @Query(() => [ThesisRegistration])
+  async getAllRegistrations(): Promise<ThesisRegistration[]> {
+    return this.registrationsService.findAll();
+  }
+
   @Mutation(() => ThesisRegistration)
   async registerForDefense(
     @Args('registrationId') registrationId: string,

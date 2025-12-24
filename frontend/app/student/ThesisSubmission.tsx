@@ -123,20 +123,18 @@ export default function ThesisSubmission() {
   );
   const submissionMilestone = activePeriod?.milestones?.find(
     (m: any) =>
-      m.name.toLowerCase().includes("bảo vệ") ||
-      m.name.toLowerCase().includes("thu") ||
-      m.name.toLowerCase().includes("nộp")
+      m.name === "Nộp khóa luận" || m.name === "Nộp báo cáo và Source code"
   );
 
   const isSubmissionTime = () => {
-    if (!submissionMilestone) return true;
+    if (!submissionMilestone) return false; // Default to FALSE if not defined
     const now = new Date();
     const start = new Date(submissionMilestone.startDate);
     const end = new Date(submissionMilestone.endDate);
     end.setHours(23, 59, 59, 999);
     return now >= start && now <= end;
   };
-  const submissionAllowed = true;
+  const submissionAllowed = isSubmissionTime();
 
   if (!registration) {
     return (
@@ -356,16 +354,22 @@ export default function ThesisSubmission() {
               {/* Re-submit Button */}
               {status !== "approved" && (
                 <div className="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-end">
-                  <button
-                    onClick={() => {
-                      setShowForm(true);
-                      setThesisFileUrl(registration.thesisFileUrl || "");
-                      setCodeLink(registration.codeLink || "");
-                    }}
-                    className="text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors bg-white border border-indigo-200 px-4 py-2 rounded-lg shadow-sm hover:shadow"
-                  >
-                    Nộp lại bản mới <ChevronRight size={16} />
-                  </button>
+                  {submissionAllowed ? (
+                    <button
+                      onClick={() => {
+                        setShowForm(true);
+                        setThesisFileUrl(registration.thesisFileUrl || "");
+                        setCodeLink(registration.codeLink || "");
+                      }}
+                      className="text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors bg-white border border-indigo-200 px-4 py-2 rounded-lg shadow-sm hover:shadow"
+                    >
+                      Nộp lại bản mới <ChevronRight size={16} />
+                    </button>
+                  ) : (
+                    <span className="text-xs text-red-500 font-medium px-4 py-2 bg-white rounded-lg border border-red-100">
+                      Đã hết hạn nộp lại
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -383,12 +387,31 @@ export default function ThesisSubmission() {
                     Vui lòng nộp đầy đủ Báo cáo và Source code để tiến hành rà
                     soát đạo văn.
                   </p>
-                  <button
-                    onClick={() => setShowForm(true)}
-                    className="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 transition-all transform hover:-translate-y-1 flex items-center gap-2 mx-auto"
-                  >
-                    <Send size={18} /> Bắt Đầu Nộp Bài
-                  </button>
+
+                  {submissionAllowed ? (
+                    <button
+                      onClick={() => setShowForm(true)}
+                      className="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 transition-all transform hover:-translate-y-1 flex items-center gap-2 mx-auto"
+                    >
+                      <Send size={18} /> Bắt Đầu Nộp Bài
+                    </button>
+                  ) : (
+                    <div className="inline-flex flex-col items-center px-6 py-4 bg-red-50 text-red-600 rounded-xl mx-auto border border-red-100">
+                      <div className="flex items-center gap-2 font-bold mb-1">
+                        <AlertCircle size={20} />
+                        <span>Chưa đến thời gian nộp bài hoặc đã quá hạn</span>
+                      </div>
+                      <span className="text-sm opacity-80">
+                        {submissionMilestone
+                          ? `${new Date(
+                              submissionMilestone.startDate
+                            ).toLocaleDateString("vi-VN")} - ${new Date(
+                              submissionMilestone.endDate
+                            ).toLocaleDateString("vi-VN")}`
+                          : "Chưa có lịch cụ thể"}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-200">

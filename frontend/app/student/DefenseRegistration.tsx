@@ -78,7 +78,7 @@ const DefenseRegistration: React.FC = () => {
   // Check Eligibility
   const isEligible = myReg?.status === "defense_ready"; // Must have passed plagiarism check
   const isRegistered =
-    myReg?.status === "defense_registration_pending" ||
+    myReg?.status === "defense_registered" ||
     myReg?.status === "defended" ||
     myReg?.status === "completed"; // Assuming new status or reusing existing?
   // Let's assume a new status "defense_registered" or just use "defense_ready" and move to "in_council"?
@@ -179,18 +179,64 @@ const DefenseRegistration: React.FC = () => {
         </div>
 
         {/* Action */}
-        {isEligible && !isRegistered && (
-          <div className="mt-4 flex justify-center">
-            <button
-              onClick={handleRegister}
-              disabled={submitting}
-              className="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold shadow-xl hover:bg-indigo-700 hover:shadow-indigo-500/40 transition-all text-lg flex items-center gap-3 transform hover:-translate-y-1"
-            >
-              {submitting ? "Đang xử lý..." : "Đăng Ký Tham Gia Bảo Vệ Ngay"}
-              {!submitting && <ShieldCheck size={24} />}
-            </button>
-          </div>
-        )}
+        {(() => {
+          const activePeriod = periodData?.thesisPeriods?.[0]; // Assuming query returns active ones? Or filter? Query name says GetActivePeriod
+          // Query returns "thesisPeriods" - likely array.
+          // Let's filter client side or assume only 1 active returned.
+          // Actually, backend usually returns active if query named GetActive.
+          // Let's assume list of all periods? No, "GetActivePeriodDefensePhase".
+          // Let's find "active" one just in case.
+
+          // Find milestone "Đăng ký bảo vệ"
+          const defenseMilestone = periodData?.thesisPeriods
+            ?.find((p: any) => p.status === "active")
+            ?.milestones?.find((m: any) => m.name === "Đăng ký bảo vệ");
+
+          const isTime = () => {
+            if (!defenseMilestone) return true;
+            const now = new Date();
+            return (
+              now >= new Date(defenseMilestone.startDate) &&
+              now <= new Date(defenseMilestone.endDate)
+            );
+          };
+
+          if (isEligible && !isRegistered) {
+            if (!isTime()) {
+              return (
+                <div className="mt-4 flex flex-col items-center">
+                  <div className="text-red-600 font-bold mb-2">
+                    Chưa đến thời gian đăng ký bảo vệ hoặc đã quá hạn.
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {defenseMilestone
+                      ? `Thời gian: ${new Date(
+                          defenseMilestone.startDate
+                        ).toLocaleDateString()} - ${new Date(
+                          defenseMilestone.endDate
+                        ).toLocaleDateString()}`
+                      : ""}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={handleRegister}
+                  disabled={submitting}
+                  className="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold shadow-xl hover:bg-indigo-700 hover:shadow-indigo-500/40 transition-all text-lg flex items-center gap-3 transform hover:-translate-y-1"
+                >
+                  {submitting
+                    ? "Đang xử lý..."
+                    : "Đăng Ký Tham Gia Bảo Vệ Ngay"}
+                  {!submitting && <ShieldCheck size={24} />}
+                </button>
+              </div>
+            );
+          }
+        })()}
 
         {message && (
           <div

@@ -65,6 +65,18 @@ export class RegistrationsService {
     return this.mapToEntity(data);
   }
 
+  async findAll(): Promise<ThesisRegistration[]> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from('thesis_registrations')
+      .select('*, student:students(*), topic:topics(*)')
+      .order('registered_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+
+    return data.map((item: any) => this.mapToEntity(item));
+  }
+
   async findByStudent(studentId: string): Promise<ThesisRegistration[]> {
     const { data, error } = await this.supabaseService
       .getClient()

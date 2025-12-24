@@ -155,6 +155,7 @@ type Query {
   councils: [Council!]!
   formTemplate(id: String!): FormTemplate
   formTemplates: [FormTemplate!]!
+  getAllRegistrations: [ThesisRegistration!]!
   myProgressReports(registrationId: String!): [ProgressReport!]!
   myRegistrations(studentId: String!): [ThesisRegistration!]!
   notification(id: ID!): Notification
