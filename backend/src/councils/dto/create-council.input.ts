@@ -29,7 +29,15 @@ export class CreateCouncilInput {
   @Field({ nullable: true })
   description?: string;
 
-  // Status is usually 'draft' on create, so might not need input, or optional
   @Field({ nullable: true })
   status?: string;
+
+  @Field({ nullable: true })
+  date?: string;
+
+  @Field({ nullable: true })
+  time?: string;
+
+  @Field({ nullable: true })
+  room?: string;
 }

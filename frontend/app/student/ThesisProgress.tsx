@@ -222,7 +222,7 @@ const ThesisProgress: React.FC = () => {
       </div>
 
       {/* Topic Card */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 to-purple-700 rounded-2xl shadow-lg text-white p-6 md:p-8">
+      <div className="relative overflow-hidden bg-purple-800 rounded-sm shadow-lg text-white p-6 md:p-8">
         <div className="absolute top-0 right-0 p-4 opacity-10">
           <TrendingUp size={120} />
         </div>
