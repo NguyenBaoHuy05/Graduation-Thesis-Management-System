@@ -1,11 +1,15 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ThesisRegistration } from './registrations.entity';
 import { CreateRegistrationInput } from './registrations.dto';
 
 @Injectable()
 export class RegistrationsService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async create(input: CreateRegistrationInput): Promise<ThesisRegistration> {
     const { studentId, topicId, teacherId } = input;
@@ -202,6 +206,37 @@ export class RegistrationsService {
     status: string,
     score?: number,
   ): Promise<ThesisRegistration> {
+    const { data: registration } = await (
+      this.supabaseService.getClient().from('thesis_registrations') as any
+    )
+      .select('student_id')
+      .eq('id', registrationId)
+      .single();
+
+    if (registration) {
+      // Create record in plagiarism_checks
+      const checkStatus =
+        status === 'defense_ready' || status === 'defense_registered'
+          ? 'passed'
+          : 'failed';
+
+      await (
+        this.supabaseService.getClient().from('plagiarism_checks') as any
+      ).insert([
+        {
+          student_id: registration.student_id,
+          registration_id: registrationId,
+          similarity_percentage: score,
+          check_date: new Date().toISOString(),
+          status: checkStatus,
+          feedback:
+            status === 'thesis_rejected'
+              ? 'High similarity score'
+              : 'Passed plagiarism check',
+        },
+      ]);
+    }
+
     const { data, error } = await (
       this.supabaseService.getClient().from('thesis_registrations') as any
     )
@@ -215,6 +250,45 @@ export class RegistrationsService {
 
     if (error) throw new Error(error.message);
     return this.mapToEntity(data);
+  }
+
+  async inviteStudent(
+    topicId: string,
+    studentId: string,
+    teacherId?: string,
+  ): Promise<ThesisRegistration> {
+    // We need to fetch teacherId if not provided (it should be the topic's owner)
+    let finalTeacherId = teacherId;
+    if (!finalTeacherId) {
+      const { data: topic } = await (
+        this.supabaseService.getClient().from('topics') as any
+      )
+        .select('teacher_id')
+        .eq('id', topicId)
+        .single();
+      if (topic) finalTeacherId = topic.teacher_id;
+    }
+
+    if (!finalTeacherId)
+      throw new BadRequestException('Topic or Teacher not found');
+
+    // Create registration (this handles duplication checks and max_student checks)
+    const registration = await this.create({
+      studentId,
+      topicId,
+      teacherId: finalTeacherId,
+    });
+
+    // 2. Send Notification
+    await this.notificationsService.create({
+      title: 'Bạn đã được thêm vào đề tài',
+      content: `Giảng viên đã thêm bạn vào đề tài. Vui lòng kiểm tra thông tin.`,
+      type: 'success',
+      date: new Date().toISOString(),
+      is_read: false,
+    });
+
+    return registration;
   }
 
   async registerForDefense(

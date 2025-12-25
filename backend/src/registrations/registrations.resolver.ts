@@ -85,4 +85,11 @@ export class RegistrationsResolver {
   ): Promise<ThesisRegistration> {
     return this.registrationsService.registerForDefense(registrationId);
   }
+  @Mutation(() => ThesisRegistration)
+  async inviteStudent(
+    @Args('topicId') topicId: string,
+    @Args('studentId') studentId: string,
+  ): Promise<ThesisRegistration> {
+    return this.registrationsService.inviteStudent(topicId, studentId);
+  }
 }

@@ -103,6 +103,7 @@ type Mutation {
   deleteThesisPeriod(id: String!): Boolean!
   deleteTimeline(id: String!): Boolean!
   deleteTopic(id: String!): Boolean!
+  inviteStudent(studentId: String!, topicId: String!): ThesisRegistration!
   registerForDefense(registrationId: String!): ThesisRegistration!
   registerTopic(createRegistrationInput: CreateRegistrationInput!): ThesisRegistration!
   reviewOutline(feedback: String!, registrationId: String!, status: String!): ThesisRegistration!
