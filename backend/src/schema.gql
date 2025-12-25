@@ -22,14 +22,17 @@ type Council {
 
 input CreateCouncilInput {
   commissionerId: String
+  date: String
   description: String
   memberIds: [String!]
   name: String!
   periodId: String!
   presidentId: String!
   reviewerId: String!
+  room: String
   secretaryId: String!
   status: String
+  time: String
   topicIds: [String!]
 }
 

@@ -103,7 +103,7 @@ const students = [
     code: 'SV001',
     name: 'Nguyễn Minh Đức',
     email: 'duc.nm@student.edu.vn',
-    phone: '0934567890',
+    phone: '0901000001',
     class_name: 'CNTT-K17',
     major: 'Công nghệ thông tin',
     gpa: 3.5,
@@ -115,7 +115,7 @@ const students = [
     code: 'SV002',
     name: 'Phạm Thu Hà',
     email: 'ha.pt@student.edu.vn',
-    phone: '0945678901',
+    phone: '0901000002',
     class_name: 'CNTT-K17',
     major: 'Công nghệ thông tin',
     gpa: 3.2,
@@ -127,9 +127,9 @@ const students = [
     code: 'SV003',
     name: 'Trần Văn Nam',
     email: 'nam.tv@student.edu.vn',
-    phone: '0956789012',
+    phone: '0901000003',
     class_name: 'CNTT-K17',
-    major: 'Công nghệ thông tin',
+    major: 'An ninh mạng',
     gpa: 2.8,
     credits_accumulated: 110,
   },
@@ -139,11 +139,11 @@ const students = [
     code: 'SV004',
     name: 'Lê Thị Mai',
     email: 'mai.lt@student.edu.vn',
-    phone: '0967890123',
+    phone: '0901000004',
     class_name: 'CNTT-K17',
-    major: 'Công nghệ thông tin',
+    major: 'Hệ thống thông tin',
     gpa: 3.6,
-    credits_accumulated: 132,
+    credits_accumulated: 135,
   },
   {
     id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a05',
@@ -151,11 +151,11 @@ const students = [
     code: 'SV005',
     name: 'Hoàng Văn Long',
     email: 'long.hv@student.edu.vn',
-    phone: '0978901234',
+    phone: '0901000005',
     class_name: 'CNTT-K17',
-    major: 'An ninh mạng',
+    major: 'Khoa học dữ liệu',
     gpa: 3.0,
-    credits_accumulated: 120,
+    credits_accumulated: 118,
   },
 ];
 
@@ -165,9 +165,9 @@ const teachers = [
     user_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11',
     code: 'GV001',
     name: 'TS. Nguyễn Văn An',
-    email: 'nva@university.edu.vn',
-    phone: '0901234567',
-    date_of_birth: '1980-05-15',
+    email: 'an.nv@edu.vn',
+    phone: '0911000001',
+    date_of_birth: '1980-01-01',
     gender: 'Nam',
     title: 'Tiến sĩ',
     title_coefficient: 1.5,
@@ -180,14 +180,14 @@ const teachers = [
     user_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12',
     code: 'GV002',
     name: 'PGS.TS. Trần Thị Bình',
-    email: 'ttb@university.edu.vn',
-    phone: '0912345678',
-    date_of_birth: '1975-08-20',
+    email: 'binh.tt@edu.vn',
+    phone: '0911000002',
+    date_of_birth: '1975-02-02',
     gender: 'Nữ',
     title: 'Phó giáo sư',
     title_coefficient: 2.0,
     max_theses: 12,
-    current_theses: 2,
+    current_theses: 1,
     specialization: 'Phát triển phần mềm',
   },
   {
@@ -195,9 +195,9 @@ const teachers = [
     user_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13',
     code: 'GV003',
     name: 'ThS. Lê Minh Cường',
-    email: 'lmc@university.edu.vn',
-    phone: '0923456789',
-    date_of_birth: '1985-12-10',
+    email: 'cuong.lm@edu.vn',
+    phone: '0911000003',
+    date_of_birth: '1985-03-03',
     gender: 'Nam',
     title: 'Thạc sĩ',
     title_coefficient: 1.0,
@@ -210,14 +210,14 @@ const teachers = [
     user_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b14',
     code: 'GV004',
     name: 'TS. Phạm Văn Dũng',
-    email: 'dung.pv@university.edu.vn',
-    phone: '0934567891',
-    date_of_birth: '1982-02-14',
+    email: 'dung.pv@edu.vn',
+    phone: '0911000004',
+    date_of_birth: '1982-04-04',
     gender: 'Nam',
     title: 'Tiến sĩ',
     title_coefficient: 1.5,
     max_theses: 8,
-    current_theses: 1,
+    current_theses: 4,
     specialization: 'Khoa học dữ liệu',
   },
   {
@@ -225,9 +225,9 @@ const teachers = [
     user_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b15',
     code: 'GV005',
     name: 'ThS. Nguyễn Thị Mai',
-    email: 'mai.nt@university.edu.vn',
-    phone: '0945678912',
-    date_of_birth: '1990-09-09',
+    email: 'mai.nt@edu.vn',
+    phone: '0911000005',
+    date_of_birth: '1990-05-05',
     gender: 'Nữ',
     title: 'Thạc sĩ',
     title_coefficient: 1.0,
@@ -243,8 +243,8 @@ const heads = [
     user_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380c01',
     code: 'HD001',
     name: 'Trần Văn Quang',
-    email: 'quang.tv@university.edu.vn',
-    phone: '0976543210',
+    email: 'quang.tv@edu.vn',
+    phone: '0922000001',
     date_of_birth: '1970-11-05',
     gender: 'Nam',
   },
@@ -256,8 +256,8 @@ const secretaries = [
     user_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380d01',
     code: 'SC001',
     name: 'Nguyễn Thị Hương',
-    email: 'huong.nt@university.edu.vn',
-    phone: '0987654321',
+    email: 'huong.nt@edu.vn',
+    phone: '0933000001',
     date_of_birth: '1988-03-22',
     gender: 'Nữ',
   },
@@ -269,44 +269,44 @@ const thesisPeriods = [
     name: 'Kỳ 1 - Năm học 2025-2026',
     academic_year: '2025-2026',
     start_date: '2025-08-01',
-    end_date: '2026-01-15',
+    end_date: '2026-01-30',
     status: 'active',
     max_group_size: 3,
     milestones: [
       {
-        id: 'm01',
+        id: 'm1',
         name: 'Đăng ký đề tài',
-        startDate: '2025-08-15',
-        endDate: '2025-08-30',
         type: 'registration',
-      },
-      {
-        id: 'm02',
-        name: 'Nộp đề cương',
-        startDate: '2025-09-01',
+        startDate: '2025-08-15',
         endDate: '2025-09-15',
-        type: 'submission',
       },
       {
-        id: 'm03',
-        name: 'Báo cáo tiến độ 1',
-        startDate: '2025-10-15',
-        endDate: '2025-10-20',
-        type: 'reporting',
+        id: 'm2',
+        name: 'Nộp đề cương',
+        type: 'outline',
+        startDate: '2025-09-20',
+        endDate: '2025-10-05',
       },
       {
-        id: 'm04',
+        id: 'm3',
         name: 'Nộp khóa luận',
-        startDate: '2025-12-01',
-        endDate: '2025-12-15',
         type: 'submission',
+        startDate: '2025-12-01',
+        endDate: '2025-12-31',
       },
       {
-        id: 'm05',
+        id: 'm4',
+        name: 'Đăng ký bảo vệ',
+        type: 'defense_registration',
+        startDate: '2026-01-01',
+        endDate: '2026-01-10',
+      },
+      {
+        id: 'm5',
         name: 'Bảo vệ trước hội đồng',
-        startDate: '2025-12-20',
-        endDate: '2025-12-25',
         type: 'defense',
+        startDate: '2026-01-15',
+        endDate: '2026-01-25',
       },
     ],
   },
@@ -320,11 +320,11 @@ const thesisPeriods = [
     max_group_size: 3,
     milestones: [
       {
-        id: 'm_old_03',
+        id: 'm_old_1',
         name: 'Bảo vệ',
+        type: 'defense',
         startDate: '2025-06-01',
         endDate: '2025-06-10',
-        type: 'defense',
       },
     ],
   },
@@ -356,22 +356,50 @@ const topics = [
     specialization: 'Phát triển phần mềm',
     status: 'approved',
     max_students: 3,
-    current_students: 3,
+    current_students: 1,
+    period_id: 'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380e01',
+  },
+  {
+    id: '10eebc99-9c0b-4ef8-bb6d-6bb9bd380f03',
+    code: 'DT003',
+    title: 'Phát hiện mã độc sử dụng Machine Learning',
+    description: 'Phân tích hành vi mã độc',
+    requirements: 'Malware Analysis, ML',
+    teacher_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b03',
+    approver_id: null,
+    specialization: 'An ninh mạng',
+    status: 'pending',
+    max_students: 2,
+    current_students: 0,
+    period_id: 'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380e01',
+  },
+  {
+    id: '10eebc99-9c0b-4ef8-bb6d-6bb9bd380f04',
+    code: 'DT004',
+    title: 'Dự báo chứng khoán',
+    description: 'Time series forecasting',
+    requirements: 'Python, Statistics',
+    teacher_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b04',
+    approver_id: 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380c01',
+    specialization: 'Khoa học dữ liệu',
+    status: 'approved',
+    max_students: 2,
+    current_students: 0,
     period_id: 'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380e01',
   },
 ];
 
 const councils = [
   {
-    id: '20eebc99-9c0b-4ef8-bb6d-6bb9bd380f01',
+    id: '20eebc99-9c0b-4ef8-bb6d-6bb9bd380g01',
     name: 'Hội đồng bảo vệ K17 - Đợt 1',
-    president_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b01',
-    secretary_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b05',
-    reviewer_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b04',
+    president_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b02', // Binh
+    secretary_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b05', // Mai
+    reviewer_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b03', // Cuong
     commissioner_id: null,
-    member_ids: ['c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b03'],
+    member_ids: ['c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b04'], // Dung
     period_id: 'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380e01',
-    date: '2026-12-20',
+    date: '2026-01-20',
     time: '08:00',
     room: 'C.301',
     topic_ids: ['10eebc99-9c0b-4ef8-bb6d-6bb9bd380f01'],
@@ -380,92 +408,121 @@ const councils = [
   },
 ];
 
+const thesisRegistrations = [
+  {
+    id: '30eebc99-9c0b-4ef8-bb6d-6bb9bd380r01',
+    student_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', // Duc
+    topic_id: '10eebc99-9c0b-4ef8-bb6d-6bb9bd380f01', // AI
+    teacher_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b01', // An
+    status: 'defense_ready',
+    registered_at: '2025-08-20',
+    outline_submitted_at: '2025-09-30',
+    outline_feedback: 'Đề cương tốt, tiếp tục triển khai.',
+    thesis_submitted_at: '2025-12-15',
+    thesis_file_url: 'https://example.com/thesis_sv001.pdf',
+    code_link: 'https://github.com/sv001/project',
+    score: 8.5,
+  },
+  {
+    id: '30eebc99-9c0b-4ef8-bb6d-6bb9bd380r02',
+    student_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', // Ha
+    topic_id: '10eebc99-9c0b-4ef8-bb6d-6bb9bd380f01', // AI
+    teacher_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b01', // An
+    status: 'defense_registered', // Ready for defense
+    registered_at: '2025-08-20',
+    outline_submitted_at: '2025-09-30',
+    outline_feedback: 'Đồng ý với định hướng.',
+    thesis_submitted_at: '2025-12-15',
+    thesis_file_url: 'https://example.com/thesis_sv002.pdf',
+    code_link: 'https://github.com/sv002/project',
+    score: 8.2,
+  },
+  {
+    id: '30eebc99-9c0b-4ef8-bb6d-6bb9bd380r03',
+    student_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a04', // Mai
+    topic_id: '10eebc99-9c0b-4ef8-bb6d-6bb9bd380f02', // App
+    teacher_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b02', // Binh
+    status: 'in_progress',
+    registered_at: '2025-08-25',
+    outline_submitted_at: '2025-10-01',
+    outline_feedback: 'Cần bổ sung sơ đồ ERD chi tiết hơn.',
+  },
+];
+
+const defenseRegistrations = [
+  {
+    id: '40eebc99-9c0b-4ef8-bb6d-6bb9bd380d01',
+    student_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', // Ha
+    registration_id: '30eebc99-9c0b-4ef8-bb6d-6bb9bd380r02',
+    supervisor_approval: true,
+    secretary_approval: false,
+    status: 'pending',
+    submitted_at: '2026-01-02',
+  },
+];
+
+const plagiarismChecks = [
+  {
+    id: '50eebc99-9c0b-4ef8-bb6d-6bb9bd380p01',
+    student_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
+    registration_id: '30eebc99-9c0b-4ef8-bb6d-6bb9bd380r01',
+    similarity_percentage: 12.5,
+    status: 'passed',
+    check_date: '2025-12-16',
+    report_file: 'turnitin_report_sv001.pdf',
+  },
+];
+
+const notifications = [
+  {
+    id: '60eebc99-9c0b-4ef8-bb6d-6bb9bd380n01',
+    title: 'Thông báo nộp khóa luận',
+    content: 'Hệ thống đã mở cổng nộp khóa luận. Hạn chót 31/12/2025.',
+    type: 'info',
+    user_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', // SV001
+    is_read: false,
+  },
+  {
+    id: '60eebc99-9c0b-4ef8-bb6d-6bb9bd380n02',
+    title: 'Kết quả rà soát đạo văn',
+    content: 'Bạn đã đạt yêu cầu rà soát đạo văn (12.5%).',
+    type: 'success',
+    user_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', // SV001
+    is_read: false,
+  },
+];
+
 async function seed() {
   console.log('--- Seeding Start ---');
   console.log('URL:', supabaseUrl);
 
-  // 1. Users
-  console.log('Seeding users...');
-  const { error: userError } = await supabase
-    .from('users')
-    .upsert(users, { onConflict: 'id' });
-  if (userError) console.error('Error seeding users:', userError);
-  else console.log('Seeded users.');
-
-  // 2. Students
-  console.log('Seeding students...');
-  const { error: studentError } = await supabase
-    .from('students')
-    .upsert(students, { onConflict: 'id' });
-  if (studentError) console.error('Error seeding students:', studentError);
-  else console.log('Seeded students.');
-
-  // 3. Teachers
-  console.log('Seeding teachers...');
-  const { error: teacherError } = await supabase
-    .from('teachers')
-    .upsert(teachers, { onConflict: 'id' });
-  if (teacherError) console.error('Error seeding teachers:', teacherError);
-  else console.log('Seeded teachers.');
-
-  // 4. Heads
-  console.log('Seeding heads...');
-  const { error: headError } = await supabase
-    .from('heads')
-    .upsert(heads, { onConflict: 'id' });
-  if (headError) console.error('Error seeding heads:', headError);
-  else console.log('Seeded heads.');
-
-  // 5. Secretaries
-  console.log('Seeding secretaries...');
-  const { error: secError } = await supabase
-    .from('secretaries')
-    .upsert(secretaries, { onConflict: 'id' });
-  if (secError) console.error('Error seeding secretaries:', secError);
-  else console.log('Seeded secretaries.');
-
-  // 6. Thesis Periods
-  console.log('Seeding thesis_periods...');
-  const { error: periodError } = await supabase
-    .from('thesis_periods')
-    .upsert(thesisPeriods, { onConflict: 'id' });
-  if (periodError) console.error('Error seeding thesis_periods:', periodError);
-  else console.log('Seeded thesis_periods.');
-
-  // 7. Topics
-  console.log('Seeding topics...');
-  const { error: topicError } = await supabase
-    .from('topics')
-    .upsert(topics, { onConflict: 'id' });
-  if (topicError) console.error('Error seeding topics:', topicError);
-  else console.log('Seeded topics.');
-
-  // 8. Councils
-  console.log('Seeding councils...');
-  const { error: councilError } = await supabase
-    .from('councils')
-    .upsert(councils, { onConflict: 'id' });
-  if (councilError) console.error('Error seeding councils:', councilError);
-  else console.log('Seeded councils.');
-
-  // 9. Thesis Registrations
-  console.log('Seeding thesis_registrations...');
-  const thesisRegistrations = [
-    {
-      id: '30eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
-      student_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
-      topic_id: '10eebc99-9c0b-4ef8-bb6d-6bb9bd380f01',
-      teacher_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380b01',
-      status: 'in_progress',
-      registered_at: '2025-08-20',
-    },
+  const tables = [
+    { name: 'users', data: users },
+    { name: 'students', data: students },
+    { name: 'teachers', data: teachers },
+    { name: 'heads', data: heads },
+    { name: 'secretaries', data: secretaries },
+    { name: 'thesis_periods', data: thesisPeriods },
+    { name: 'topics', data: topics },
+    { name: 'councils', data: councils },
+    { name: 'thesis_registrations', data: thesisRegistrations },
+    { name: 'defense_registrations', data: defenseRegistrations },
+    { name: 'plagiarism_checks', data: plagiarismChecks },
+    { name: 'notifications', data: notifications },
   ];
 
-  const { error: regError } = await supabase
-    .from('thesis_registrations')
-    .upsert(thesisRegistrations, { onConflict: 'id' });
-  if (regError) console.error('Error seeding thesis_registrations:', regError);
-  else console.log('Seeded thesis_registrations.');
+  for (const { name, data } of tables) {
+    console.log(`Seeding ${name}...`);
+    // Upsert to handle potential conflicts or updates
+    const { error } = await supabase
+      .from(name)
+      .upsert(data, { onConflict: 'id' });
+    if (error) {
+      console.error(`Error seeding ${name}:`, error);
+    } else {
+      console.log(`Seeded ${name}.`);
+    }
+  }
 
   console.log('--- Seeding Completed ---');
 }
