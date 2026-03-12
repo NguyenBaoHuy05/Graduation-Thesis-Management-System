@@ -12,7 +12,9 @@ import {
   Mail,
   Phone,
   AlertCircle,
+  Download,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { gql } from "@apollo/client";
 
@@ -325,16 +327,47 @@ const TeacherManagement: React.FC = () => {
             Danh sách giảng viên và quản lý thông tin
           </p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setIsAddModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus size={20} />
-          <span>Thêm giảng viên</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              resetForm();
+              setIsAddModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            <Plus size={20} />
+            <span>Thêm giảng viên</span>
+          </button>
+          <button
+            onClick={() => {
+              const worksheet = XLSX.utils.json_to_sheet(
+                teachers.map((t: Teacher) => ({
+                  "Mã giảng viên": t.code,
+                  "Họ và tên": t.name,
+                  Email: t.email,
+                  "Số điện thoại": t.phone,
+                  "Ngày sinh": t.dateOfBirth ? t.dateOfBirth.split("T")[0] : "",
+                  "Giới tính": t.gender,
+                  "Học vị": t.title,
+                  "Chuyên môn": t.specialization,
+                  "Số lượng hướng dẫn tối đa": t.maxTheses,
+                  "Đang hướng dẫn": t.currentTheses,
+                }))
+              );
+              const workbook = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(
+                workbook,
+                worksheet,
+                "Danh sách giảng viên"
+              );
+              XLSX.writeFile(workbook, "Danh_sach_giang_vien.xlsx");
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+          >
+            <Download size={20} />
+            <span>Xuất Excel</span>
+          </button>
+        </div>
       </div>
 
       {/* Search & Filter */}
