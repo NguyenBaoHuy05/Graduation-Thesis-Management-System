@@ -15,7 +15,9 @@ import {
   AlertCircle,
   GraduationCap,
   BookOpen,
+  Download,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { gql } from "@apollo/client";
 
@@ -270,16 +272,45 @@ const StudentManagement: React.FC = () => {
             Danh sách sinh viên và quản lý thông tin
           </p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setIsAddModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus size={20} />
-          <span>Thêm sinh viên</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              resetForm();
+              setIsAddModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            <Plus size={20} />
+            <span>Thêm sinh viên</span>
+          </button>
+          <button
+            onClick={() => {
+              const worksheet = XLSX.utils.json_to_sheet(
+                students.map((s) => ({
+                  "Mã sinh viên": s.code,
+                  "Họ và tên": s.name,
+                  Lớp: s.class || s.className,
+                  Ngành: s.major,
+                  Email: s.email,
+                  "Số điện thoại": s.phone,
+                  GPA: s.gpa,
+                  "Tín chỉ tích lũy": s.creditsAccumulated,
+                }))
+              );
+              const workbook = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(
+                workbook,
+                worksheet,
+                "Danh sách sinh viên"
+              );
+              XLSX.writeFile(workbook, "Danh_sach_sinh_vien.xlsx");
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+          >
+            <Download size={20} />
+            <span>Xuất Excel</span>
+          </button>
+        </div>
       </div>
 
       {/* Search & Filter */}
